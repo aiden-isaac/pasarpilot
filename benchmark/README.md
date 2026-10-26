@@ -13,3 +13,18 @@ Start with one slot. No result from unit tests constitutes a browser benchmark o
 
 Runtime/data commands will be documented with their implementation. Raw outputs and browser profiles
 must remain protected and outside version control; publish only aggregate synthetic findings.
+
+`sh runtime-check.sh` checks rootless Podman/cgroup prerequisites without a browser launch.
+Build using `podman build --memory=1g --memory-swap=1g --cpu-quota=200000 --cpu-period=100000 -t localhost/pasarpilot-benchmark:v1 -f Containerfile .`
+after compilation. `sh prepare-fixture.sh` creates only experiment-labelled resources: an internal
+network and a non-root, 256 MiB-capped fixture container with no published ports. It prints the private
+fixture origin for the run manifest. It refuses conflicting resources rather than replacing them.
+
+`seccomp.json` is the pinned Playwright 1.64.1 Docker seccomp profile from
+`https://github.com/microsoft/playwright/blob/v1.64.1/utils/docker/seccomp_profile.json`;
+it retains the syscall filter while allowing Chromium's namespace sandbox. Never substitute an
+unconfined seccomp profile, host networking or `--no-sandbox` when a capability check fails.
+
+Image builds copy only the two lockfile-installed Playwright runtime packages. Run `npm ci` before
+building; there is no package-registry access from the build container. This also avoids inheriting
+a host-only loopback HTTP proxy inside rootless build networking.
