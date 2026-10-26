@@ -17,7 +17,7 @@
 - [x] 3.1 Implement exclusive host profile locks and generation-numbered persisted attempt records; bind ownership to unique container identity or PID/start time and reject unknown/path-escaping tenant profiles.
 - [ ] 3.2 Implement fresh-container persistent-profile visits, independent identity/history readiness checks, seed-once storage assertions and graceful shutdown with verified empty process-tree/cgroup before release.
 - [ ] 3.3 Implement heartbeat/expiry handling, cancellation/revocation, bounded forced cleanup of experiment-only descendants and supervisor-start reconciliation; prove expiry cannot launch a second browser over a surviving owner.
-- [ ] 3.4 Append/flush normalised synthetic observations to a durable local ledger and consume them after browser exit; demonstrate renewed ownership/state checks and no blind retry for obsolete or uncertain fixture actions without adding trading/AI/production scheduling.
+- [x] 3.4 Append/flush normalised synthetic observations to a durable local ledger and consume them after browser exit; demonstrate renewed ownership/state checks and no blind retry for obsolete or uncertain fixture actions without adding trading/AI/production scheduling.
 
 ## 4. Instrument and check the safety envelope
 
