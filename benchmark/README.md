@@ -28,3 +28,13 @@ unconfined seccomp profile, host networking or `--no-sandbox` when a capability 
 Image builds copy only the two lockfile-installed Playwright runtime packages. Run `npm ci` before
 building; there is no package-registry access from the build container. This also avoids inheriting
 a host-only loopback HTTP proxy inside rootless build networking.
+
+After the authorised Minecraft shutdown and fixture setup, run:
+
+```
+BENCH_REVISION=<source-commit> node dist/src/cli.js baseline /absolute/private/data
+```
+
+This records a 60-second warmed baseline and a protected manifest with the minimum observed
+MemAvailable minus the host safety reserve and 1.5 GiB future-service reserve. It refuses a running
+Minecraft workload. Initial browser admission additionally requires 2 GiB; swap is not capacity.
