@@ -8,7 +8,7 @@
 
 - [x] 2.1 Add a minimal TypeScript/Playwright harness workspace with pinned versions and documented commands; keep runtime installation/configuration explicit and scoped to the experiment.
 - [ ] 2.2 Set up one compatible container runtime on Jarlaxle if needed and check kernel/runtime prerequisites for non-root sandboxed Chromium without launching a browser yet; verify actual sandbox operation in the admitted pilot and refuse an unsandboxed fallback. Record setup overhead before resource comparisons.
-- [ ] 2.3 Create the private authorised fixture with three synthetic identities, persistent authentication/local-storage/IndexedDB counters, deterministic four-target inspection, expiry/history-unavailable states and a bounded synthetic action for reconciliation tests.
+- [x] 2.3 Create the private authorised fixture with three synthetic identities, persistent authentication/local-storage/IndexedDB counters, deterministic four-target inspection, expiry/history-unavailable states and a bounded synthetic action for reconciliation tests.
 - [ ] 2.4 Define protected local profile/raw-output directories, exclusions from version control and a sanitised result schema; verify fixture-only network access and absence of public CDP/VNC/management endpoints.
 - [ ] 2.5 Start the fixed fixture/collector/supervisor workload, capture a warmed 60-second idle baseline, and declare the safety reserve, future-service reserve, initial cap, CPU limit, swap policy, cadence and timeouts in a run manifest before the first admitted browser.
 
