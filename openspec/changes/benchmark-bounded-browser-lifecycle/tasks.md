@@ -2,7 +2,7 @@
 
 - [x] 1.1 Revalidate Jarlaxle hardware, runtime availability and Minecraft process/controller identity; record current RSS/PSS, cgroup memory and a 60-second live host baseline without collecting secrets.
 - [x] 1.2 If Minecraft is running, present the verified graceful-stop procedure and obtain explicit owner confirmation or record the owner's direct stop; verify world-save exit and absence of restart without deleting data, changing configuration or stopping unrelated services. If blocked, keep browser execution blocked.
-- [ ] 1.3 Capture the post-stop 60-second baseline, or document that Minecraft was already stopped; retain both actual samples and do not assume all Minecraft RSS becomes available RAM.
+- [x] 1.3 Capture the post-stop 60-second baseline, or document that Minecraft was already stopped; retain both actual samples and do not assume all Minecraft RSS becomes available RAM.
 
 ## 2. Prepare the smallest controlled environment
 
