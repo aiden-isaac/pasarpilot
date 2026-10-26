@@ -826,6 +826,21 @@
         ]
       },
       "excludes": {}
+    },
+    {
+      "names": [
+        "clone3"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 38,
+      "comment": "Return ENOSYS for clone3 so modern libc falls back to the existing filtered clone syscall."
+    },
+    {
+      "names": [
+        "chroot"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "Chromium namespace sandbox chroots after entering its own user namespace; kernel capability checks still apply and the container drops all capabilities."
     }
   ]
 }

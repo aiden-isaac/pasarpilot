@@ -24,10 +24,17 @@ fixture origin for the run manifest. It refuses conflicting resources rather tha
 `https://github.com/microsoft/playwright/blob/v1.64.1/utils/docker/seccomp_profile.json`;
 it retains the syscall filter while allowing Chromium's namespace sandbox. Never substitute an
 unconfined seccomp profile, host networking or `--no-sandbox` when a capability check fails.
+Compatibility additions deny `clone3` with ENOSYS (38), allowing modern libc to fall back to the
+profile's filtered `clone`, and allow `chroot` so Chromium can enter its namespace sandbox's empty
+root. The container still drops all capabilities; kernel privilege checks still apply. Without the
+explicit `chroot` rule, the profile's capability-conditional rule rejects this sandbox setup step.
 
 Image builds copy only the two lockfile-installed Playwright runtime packages. Run `npm ci` before
 building; there is no package-registry access from the build container. This also avoids inheriting
 a host-only loopback HTTP proxy inside rootless build networking.
+Browser and fixture runs explicitly disable Podman's host-proxy forwarding; traffic stays on the
+internal fixture network. A writable ephemeral HOME is provided inside the capped tmpfs for Chromium
+runtime files; the selected persistent profile is the only seller state mounted into the container.
 
 After the authorised Minecraft shutdown and fixture setup, run:
 

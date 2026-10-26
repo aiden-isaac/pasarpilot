@@ -23,6 +23,8 @@ if (command === 'baseline' && dataRoot) {
   };
   writeJson(join(root, 'manifest.json'), manifest);
   console.log(JSON.stringify({ baseline: 'complete', poolBudget: manifest.poolBudget, samples: samples.length }));
+} else if (command === 'smoke' && dataRoot) {
+  await (await import('./smoke.js')).smoke(initialise(dataRoot));
 } else {
   console.log('Usage: node dist/src/cli.js baseline PRIVATE_DATA_ROOT');
   if (command) process.exitCode = 2;

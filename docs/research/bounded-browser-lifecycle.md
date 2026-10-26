@@ -37,3 +37,9 @@ This is measured post-stop availability, not a browser allowance. Runtime/fixtur
 ## Runtime preparation
 
 The owner installed Podman. Read-only checks confirmed Podman 4.9.3, rootless operation, the systemd cgroup manager, cgroup v2 and seccomp support. A compatible runtime exists; Chromium sandbox operation has not yet been proven. A SHA256-verified official Node.js 22.23.4 toolchain was installed under the user's dedicated benchmark toolchain directory without sudo or changes to system services. `benchmark/runtime-check.sh` records the repeatable prerequisites.
+
+## Lifecycle smoke verification
+
+Two controlled visits in a separate smoke dataset passed on Jarlaxle: the second fresh Chromium process restored the same synthetic cookie, local storage and IndexedDB, and the committed counter advanced from 0 to 1. Chromium's own status reported Layer 1 Namespace, PID and network namespaces, and Seccomp-BPF enabled. Both containers were verified stopped before releasing ownership. This is not the primary 100-visit comparison.
+
+Preparation failures were retained locally: a legacy seccomp clone3 error, a missing writable ephemeral HOME, a chroot rule incompatible with dropping all container capabilities, a sandbox-status label mismatch, and forwarded host-only proxy settings. Fixes retained the default-deny syscall filter, all-capabilities-dropped runtime, non-root execution, read-only root filesystem and internal-only networking. The explicit chroot allowance enables Chromium's own empty-root sandbox; clone3 is denied with ENOSYS for libc fallback. No unsandboxed browser was used. Startup failure samples showed no OOM events; those samples are not full-session memory estimates.
