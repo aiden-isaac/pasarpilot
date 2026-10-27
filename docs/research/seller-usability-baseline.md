@@ -89,3 +89,13 @@ New orders use database `now()`. No UUID-derived historical time is invented.
 TypeScript and all 29 trading database tests pass, including fresh setup and
 separate disposable v1/v2 upgrade simulations with retained credentials, sources,
 sessions, holds, agreement snapshots and paid/completed state (`task-02.txt`).
+
+## Task 1.3: restricted runtime role
+
+The pre-change probe found migration INSERT permitted. Idempotent migration now
+revokes all migration writes for fresh and upgraded datasets. Focused real-database
+checks pass: runtime is `trading_runtime`, has no elevated role flags, cannot
+create/alter business or actual scheduler tables or update/delete audit/migration
+records, and can still start/send/cancel/maintain its pg-boss queue. Fresh/v1/v2
+migration preservation also passes. Serving constructs the default runtime pool;
+the provisioning pool remains confined to setup/migrate commands.

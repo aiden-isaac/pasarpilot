@@ -26,6 +26,7 @@ export async function migrate(p: pg.Pool) {
       if(!['[1]','[1,2]','[1,2,3]'].includes(JSON.stringify(versions)))throw Error('incompatible-trading-schema');
       if(versions.length===1)await upgrade(c);
       if(versions.length<3)await profileUpgrade(c);
+      await c.query('REVOKE INSERT,UPDATE,DELETE ON trading.migrations FROM trading_runtime');
       return;
     }
     await c.query(`
@@ -102,7 +103,8 @@ CREATE TABLE trading.activity(seller_id text NOT NULL REFERENCES trading.sellers
 DO $$ BEGIN IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='trading_runtime') THEN CREATE ROLE trading_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE; END IF; END $$;
 GRANT USAGE ON SCHEMA trading TO trading_runtime;
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA trading TO trading_runtime;
-REVOKE UPDATE,DELETE ON trading.activity,trading.migrations FROM trading_runtime;
+REVOKE UPDATE,DELETE ON trading.activity FROM trading_runtime;
+REVOKE INSERT,UPDATE,DELETE ON trading.migrations FROM trading_runtime;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA trading TO trading_runtime;
 CREATE SCHEMA IF NOT EXISTS trading_queue AUTHORIZATION trading_runtime;
 `);
