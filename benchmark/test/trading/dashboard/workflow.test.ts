@@ -1,0 +1,34 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+import { randomBytes } from 'node:crypto';
+import { accounts,id } from '../database/helpers.js';
+import { pool } from '../../../src/trading/db.js';
+import { hashPassword } from '../../../src/trading/password.js';
+import { listen } from '../../../src/trading/server.js';
+import { mutate,view } from '../../../src/trading/dashboard.js';
+test('authenticated seller creates variant and post, reserves a claim and approves a payment request',async()=>{
+ const [a]=await accounts(),p=pool(),password=randomBytes(24).toString('hex');
+ await p.query('DELETE FROM trading.login_limits');await p.query('UPDATE trading.sellers SET password_hash=$2 WHERE id=$1',[a.seller_id,await hashPassword(password)]);
+ const app=await listen(p,0,mutate,view);const addr=app.address();assert.ok(addr&&typeof addr!=='string');
+ let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
+ try{browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
+ const page=await browser.newPage();await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
+ const name=`Synthetic Bolt ${id()}`,title=`WTS ${id()}`;
+ const add=page.locator('form[action="/inventory"]').filter({has:page.getByRole('button',{name:'Add inventory',exact:true})});
+ await add.getByLabel('name',{exact:true}).fill(name);await add.getByLabel('printing',{exact:true}).fill('SYN');await add.getByLabel('collector',{exact:true}).fill('1');await add.getByRole('button').click();
+ const postForm=page.locator('form[action="/listing"]').filter({has:page.getByRole('button',{name:'Create WTS post',exact:true})});await postForm.getByLabel('Post title').fill(title);await postForm.getByRole('button').click();
+ const post=page.locator('article').filter({has:page.getByRole('heading',{name:`${title} (Open)`,exact:true})});const map=post.locator('form[action="/item"]').first();
+ const inv=(await p.query('SELECT id FROM trading.inventory WHERE seller_id=$1 AND name=$2',[a.seller_id,name])).rows[0].id;
+ await map.getByLabel('Inventory variant').selectOption(inv);await map.getByRole('button').click();
+ const it=(await p.query('SELECT id FROM trading.items WHERE seller_id=$1 AND inventory_id=$2',[a.seller_id,inv])).rows[0].id;
+ const simulate=page.locator('form[action="/synthetic"]');await simulate.getByLabel('Item comment').selectOption(it);await simulate.getByRole('button').click();
+ const o=(await p.query('SELECT * FROM trading.orders WHERE seller_id=$1 AND item_id=$2',[a.seller_id,it])).rows[0];assert.ok(o);
+ const config=page.locator('form[action="/instructions"]');await config.getByLabel('Synthetic payment instructions').fill('DEMO ONLY synthetic account');await config.getByLabel('Approved for sharing').selectOption('yes');await config.getByRole('button').click();
+ const order=page.locator(`#order-${o.id}`);await order.getByLabel('Agreed MYR fee').fill('0.00');await order.getByRole('button',{name:'Agree fulfilment fee',exact:true}).click();
+ await page.locator(`#order-${o.id}`).getByRole('button',{name:'Propose payment request',exact:true}).click();
+ const draft=(await p.query("SELECT id FROM trading.drafts WHERE seller_id=$1 AND order_id=$2 AND kind='payment'",[a.seller_id,o.id])).rows[0];
+ await page.locator(`#draft-${draft.id}`).getByRole('button').click();assert.match(await page.locator(`#draft-${draft.id}`).innerText(),/Delivered to fixture/);
+ assert.equal((await p.query('SELECT reserved FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].reserved,1);
+ }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
+});
