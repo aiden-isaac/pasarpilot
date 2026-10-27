@@ -14,6 +14,7 @@ import { observations, actionGate } from './events.js';
 import { inspectVisit, closeVisit } from './visit.js';
 import { SchedulerStore, type Claim, type Outcome } from './scheduler-store.js';
 import { tenant, actionId, type ScheduledTenant } from './schedule.js';
+import { sampleServices } from './scheduler-metrics.js';
 
 export type SchedulerManifest = { schemaVersion: 1; poolBudget: number; minecraftStopped: boolean; measuredAllowance?: number };
 const reason = (error: unknown) => error instanceof Error ? error.message : 'scheduler-failed';
@@ -168,9 +169,17 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
   const stop = () => { stopping = true; };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
   const runId = `scheduler-${Date.now()}`;
+  const services: ReturnType<typeof sampleServices>[] = [];
+  let serviceFailure: Error | undefined;
+  let serviceCollector: ReturnType<typeof setInterval> | undefined;
   const results: { job: string; tenant: string; retry: number; dueAt: number; waitMs: number; latenessMs: number; result: Outcome }[] = [];
   let error: string | undefined;
   try {
+    services.push(sampleServices(store.root));
+    serviceCollector = setInterval(() => {
+      try { services.push(sampleServices(store.root)); }
+      catch (failure) { serviceFailure = failure as Error; stopping = true; }
+    }, 1000);
     writeJson(join(store.root, 'runs', `${runId}.plan.json`), { schemaVersion: 1, planned: count, manifest,
       schedules: (await store.status()).schedules, versions: JSON.parse(readFileSync(join(store.root, 'scheduler.json'), 'utf8')), startedAt: Date.now() });
     await recoverJobs(store);
@@ -194,6 +203,7 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
         else throw failure;
       }
       await store.healthy();
+      if (serviceFailure) throw serviceFailure;
       await store.finish(job, result);
       dispatched++;
       results.push({ job: job.id, tenant: job.name, retry: job.retryCount, dueAt: job.data.dueAt,
@@ -201,10 +211,12 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
       writeJson(join(store.root, 'runs', `${runId}.progress.json`), { schemaVersion: 1, planned: count, results, status: await store.status() });
       console.log(JSON.stringify({ runId, dispatched, tenant: job.name, outcome: result.outcome, error: result.error }));
     }
+    if (serviceFailure) throw serviceFailure;
   } catch (failure) { error = reason(failure); throw failure; }
   finally {
+    clearInterval(serviceCollector);
     process.off('SIGTERM', stop); process.off('SIGINT', stop);
-    writeJson(join(store.root, 'runs', `${runId}.json`), { schemaVersion: 1, planned: count, complete: dispatched === count && !error, error, results, endedAt: Date.now() });
+    writeJson(join(store.root, 'runs', `${runId}.json`), { schemaVersion: 1, planned: count, complete: dispatched === count && !error, error, results, services, endedAt: Date.now() });
     lock.stdin.end();
   }
 }

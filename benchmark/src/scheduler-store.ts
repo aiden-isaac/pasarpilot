@@ -223,7 +223,15 @@ export class SchedulerStore {
     const actions = (await this.pool.query(`SELECT * FROM ${this.schema}.action ORDER BY tenant,id`)).rows;
     const attempts = (await this.pool.query(`SELECT * FROM ${this.schema}.attempt ORDER BY started_at`)).rows;
     const queue = (await this.pool.query(`SELECT id,name,state,data,retry_count,start_after FROM ${this.queueSchema}.job WHERE state<'completed' ORDER BY created_on,id`)).rows;
-    const consumed = (await this.pool.query(`SELECT count(*)::int count FROM ${this.schema}.consumed`)).rows[0].count;
-    return { identity: await this.identity(), schedules, actions, attempts, queue, consumed };
+    const consumer = (await this.pool.query(`SELECT count(*)::int count,
+      COALESCE(max(extract(epoch FROM (processed_at-(event->>'observedAt')::timestamptz))*1000),0)::float8 lag_ms FROM ${this.schema}.consumed`)).rows[0];
+    const consumed = consumer.count;
+    const now = Date.now();
+    const pending = [...queue.map(j => j.data.firstPending), ...schedules.filter(s => s.first_pending).map(s => s.first_pending.getTime())];
+    const metrics = { queueDepth: queue.length, nonterminalLogical: new Set([...queue.map(j => j.id), ...actions.filter(a => a.outcome === 'uncertain').map(a => a.job)]).size,
+      oldestPendingMs: pending.length ? Math.max(0, now - Math.min(...pending)) : 0,
+      coalesced: schedules.reduce((n, s) => n + Number(s.coalesced), 0), consumed, consumeLagMaxMs: consumer.lag_ms,
+      expired: attempts.filter(a => a.result?.error === 'deadline-expired').length, retries: attempts.filter(a => a.delivery > 0).length };
+    return { identity: await this.identity(), schedules, actions, attempts, queue, consumed, metrics };
   }
 }

@@ -11,6 +11,7 @@ import { podman, inspect, rootLabel, fixtureOrigin } from '../../src/container.j
 import { initialise, writeJson } from '../../src/storage.js';
 import { observations, actionGate } from '../../src/events.js';
 import { scheduledTenants, type ScheduledTenant } from '../../src/schedule.js';
+import { sampleServices } from '../../src/scheduler-metrics.js';
 
 test('prepared-host scheduler fault recovery preserves ownership, durable results and action uncertainty', { timeout: 300_000 }, async () => {
   const parent = process.env.SCHEDULER_DATA_ROOT;
@@ -22,7 +23,7 @@ test('prepared-host scheduler fault recovery preserves ownership, durable result
   let store = await SchedulerStore.open(root, true, 120_000, socket);
   const cases: { name: string; passed: boolean; ms: number; error?: string }[] = [];
   let complete = false;
-  const record = () => writeJson(join(root, 'runs', 'fixture-faults.json'), { schemaVersion: 1, complete, cases });
+  const record = () => writeJson(join(root, 'runs', 'fixture-faults.json'), { schemaVersion: 1, complete, cases, services: sampleServices(parent) });
   const checkCase = async (name: string, fn: () => Promise<void>) => {
     const start = Date.now();
     try { await fn(); cases.push({ name, passed: true, ms: Date.now() - start }); }
@@ -62,7 +63,7 @@ test('prepared-host scheduler fault recovery preserves ownership, durable result
         assert.ok((await store.submitAction(t, 'burst-action', 0, Date.now() + 180000)).job);
         assert.equal((await store.submitAction(t, 'overflow', 0, Date.now() + 180000)).rejected, 'action-backpressure');
       }
-      assert.equal((await store.status()).queue.length, 6);
+      assert.equal((await store.status()).metrics.nonterminalLogical, 6);
       const turns: string[] = [];
       for (let i = 0; i < 6; i++) { const job = (await store.claim())!; turns.push(job.name); await store.finish(job, { outcome: 'injected-skip' }); }
       assert.deepEqual(turns.slice(0,3), turns.slice(3)); assert.equal(new Set(turns.slice(0,3)).size, 3);
