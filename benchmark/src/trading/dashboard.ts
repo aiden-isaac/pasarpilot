@@ -56,7 +56,7 @@ export const view:View=async(w,csrf,url)=>{
  const param=(key:string)=>url.searchParams.get(key)??'';
  const section=param('view')||(param('order')?'orders':'overview'),selected=param('id')||param('order');
  if(!views.includes(section))throw Error('not-found');
- const current=safeReturn('/'+url.search),back=safeReturn(param('back')||`/?view=${section}`);
+ const current=safeReturn('/'+url.search),back=safeReturn(param('back')||`/?view=${section==='items'?'listings':section}`);
  const seller=(await w.p.query('SELECT login,display_name,profile_version,instructions,instructions_approved,instruction_version FROM trading.sellers WHERE id=$1',[w.seller])).rows[0];
  const href=(view:string,id='',extra:Record<string,string>={})=>'/?'+new URLSearchParams({view,...(id?{id}:{}),...extra});
  const link=(view:string,id:string,label:string,extra:Record<string,string>={})=>`<a href="${e(href(view,id,{back:current,...extra}))}">${e(label)}</a>`;

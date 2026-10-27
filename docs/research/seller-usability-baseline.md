@@ -173,3 +173,18 @@ receipt, and drop-off stays awaiting collection. MYR totals and readable MYT
 Build and all three dashboard tests pass, including actual evidence intake,
 backup state and paid intermediate-postage scenarios. Reviewed desktop/mobile
 order screenshots (`task-09-order*.png`). No trading transition rules changed.
+
+## Task 2.4: appearance/accessibility verification
+
+Rendered assertions pass for both appearances at 1280×800, 390×800, 360×800
+and 320×800: no horizontal overflow, visible 3px keyboard focus, semantic
+skip-to-main navigation, reduced-motion transitions removed and all visible
+action targets >=44 CSS px. Native labels/landmarks remain available. Long text
+wraps; the brand also wraps at enlarged text. Empty and error states were checked.
+Text contrast: light primary 16.10, secondary 5.72, accent/tint 5.68, button 6.52;
+dark 13.87, 8.89, 6.49, 7.95. Essential control borders: 3.66 / 4.36.
+200% text at 320 CSS px and a 640×400 CSS/DPR2 geometry equivalent to 200%
+zoom on 1280×800 pass reflow. This is automated zoom-equivalent emulation, not
+a native browser-toolbar zoom interaction. Reviewed private screenshots in
+`test-20261028/appearance/` (light/dark desktop/mobile, enlarged text and zoom).
+Actual screen-reader workflow is still a separate final acceptance requirement.
