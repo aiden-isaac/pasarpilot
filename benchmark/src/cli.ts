@@ -34,6 +34,28 @@ if (command === 'baseline' && dataRoot) {
 } else if (['pilot', 'continuous', 'rotation'].includes(command ?? '') && dataRoot) {
   await (await import('./runner.js')).run(initialise(dataRoot), command as 'pilot' | 'continuous' | 'rotation',
     Number(process.argv[4] ?? (command === 'pilot' ? 3 : 100)), Number(process.argv[5] ?? defaults.cadenceMs));
+} else if (command === 'capacity' && dataRoot) {
+  const runs = join(dataRoot, 'runs');
+  const names = readdirSync(runs);
+  const name = names.filter(n => /^rotation-\d+\.json$/.test(n)).sort().at(-1);
+  if (!name) throw Error('rotation-result-required');
+  const run = JSON.parse(readFileSync(join(runs, name), 'utf8'));
+  if (!run.complete) throw Error('complete-rotation-required');
+  const measuredSlots = [1];
+  const concurrentDurations: Record<number, number[]> = {};
+  for (const slots of [2, 4]) {
+    const name = names.filter(n => n.startsWith(`concurrency-${slots}-`) && n.endsWith('.json')).sort().at(-1);
+    if (!name) continue;
+    const concurrent = JSON.parse(readFileSync(join(runs, name), 'utf8'));
+    if (concurrent.complete) {
+      measuredSlots.push(slots);
+      concurrentDurations[slots] = concurrent.cohorts.map((c: { occupiedCycleMs: number }) => c.occupiedCycleMs / 1000);
+    }
+  }
+  const report = (await import('./capacity.js')).model({ durations: run.results.map((r: { occupiedMs: number }) => r.occupiedMs / 1000),
+    successful: run.results.filter((r: { ok: boolean }) => r.ok).length }, measuredSlots, concurrentDurations);
+  writeJson(join(runs, 'capacity.json'), { source: name, ...report, concurrencyNote: 'One-slot input is 100 visits; higher concurrency uses three batch-cycle timings if available, otherwise single-slot extrapolation. No sustained multislotted capacity test.' });
+  console.log(JSON.stringify({ source: name, rows: report.rows.length, measuredSlots }));
 } else if (command === 'interactive' && dataRoot) {
   await (await import('./interactive.js')).interactive(initialise(dataRoot));
 } else if (command === 'concurrency' && dataRoot) {

@@ -77,3 +77,10 @@ container without any seller profile, sharing only the display network namespace
 and background capacity count toward admission. All containers retain sandboxing and a 256-task
 limit. Fifteen-second phase windows measure a static fixture, not a production streaming load.
 Initial authentication, public remote access and production inactivity policies remain out of scope.
+
+`node dist/src/cli.js capacity DATA` performs browser-free calculations from the complete rotation
+and successful concurrency results. It writes all 864 demand/arrival sensitivity rows to private
+`runs/capacity.json`; no browser is launched. One-slot durations include every primary attempt;
+higher-concurrency rows use measured batch work cycles where available and otherwise explicitly
+extrapolate. Outgoing visits cost the same as observations unless separately measured. Overload
+returns unbounded backlog, not an invented finite delay. See the sanitised research report and CSV.
