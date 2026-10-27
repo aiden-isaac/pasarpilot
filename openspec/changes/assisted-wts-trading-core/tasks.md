@@ -9,7 +9,7 @@
 
 - [x] 2.1 Implement password/session storage, login/logout, expiry/revocation and bounded generic login failures using Node platform crypto; test that expired/revoked/forged sessions expose no data.
 - [x] 2.2 Add the loopback HTTP server and seller-scoped request/SQL boundaries with CSRF/same-origin checks, escaping, input bounds and optimistic form versions; test cross-seller ID substitution, colliding IDs, unsafe HTML and stale/forged mutations.
-- [ ] 2.3 Add inventory forms/views for printing/set, collector number, language, finish/variant, condition, unsold/reserved/available quantities and MYR asking price; reject edits that consume held stock and preserve variant isolation.
+- [x] 2.3 Add inventory forms/views for printing/set, collector number, language, finish/variant, condition, unsold/reserved/available quantities and MYR asking price; reject edits that consume held stock and preserve variant isolation.
 - [ ] 2.4 Add WTS post/item-comment creation, explicit inventory mapping, offered quantities, source-parent references and close/edit/version guards; render the item hierarchy and demonstrate shared stock across two listings without creating a cart.
 
 ## 3. Introduce normalized events and browser-free processing
