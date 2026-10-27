@@ -1,8 +1,21 @@
-# Bounded browser lifecycle implementation evidence
+# Jarlaxle bounded browser lifecycle benchmark
 
 ## Status
 
-Implementation in progress. Both 100-visit primary arms have completed; final reclamation and optional-mode/capacity gates remain pending. Host and fixture results below are measurements, not Facebook capacity.
+**GO for a bounded, single-slot fixture scheduler next.** Both matched primary arms passed, including clean persistence, resource/reclamation and recovery gates. This does not authorise Facebook automation or establish real Messenger reliability. Implementation and conditional modes are complete; final scoped cleanup is recorded at the end of this report.
+
+Measured on 2026-10-27, after the owner-approved Minecraft stop on 2026-10-26. [Capacity and latency projections](bounded-browser-capacity.md) and the [complete sanitised 864-scenario matrix](bounded-browser-capacity.csv) separate calculated demand from measured fixture behaviour.
+
+| Experiment question | Evidence-based answer |
+| --- | --- |
+| Is rotation viable on Jarlaxle? | Yes for the controlled fixture: 100/100 fresh-process visits passed across three profiles. |
+| Memory per session? | Rotation kernel peak 281.55 MiB; resident control peak 418.45 MiB. Use a conservative calibrated 576 MiB fixture allowance, not these peaks as fixed RAM promises. |
+| Is memory reclaimed? | Yes: zero surviving attempts, 13.50 MiB available-memory deterioration after rotation versus the 256 MiB tolerance; anonymous difference +1.27 MiB. |
+| Restoration cost? | Worker launch median 707 ms; fixture/auth/storage readiness median 126 ms; complete occupied visit mean 2.316 seconds. |
+| Persistence reliable over repeated cycles? | All 100 clean rotation assertions passed without reseeding. Five crashes restored previously cleanly flushed state; unfinished writes remain outside the guarantee. |
+| How many workers fit? | Four concurrent isolated workers passed three short batches with Minecraft stopped. Only one slot completed the 100-visit protocol; sustained two/four-slot reliability is unverified. |
+| Achievable freshness? | One-slot calculated 70% capacity 1,088 fixture checks/hour; five sellers/15 minutes use 1.3% raw utilisation. Polling still adds interval residual delay; see the complete arrival/queue model. |
+| What should follow? | A single-host, single-slot durable fixture scheduler with profile fencing, job coalescing/backpressure and browser-free event consumption; no Facebook integration yet. |
 
 ## Pre-stop baseline
 
@@ -18,7 +31,7 @@ Captured 2026-10-26T14:35:59.815615+00:00 on Jarlaxle over 60.1 seconds (61 samp
 - Minecraft identified through its working directory, Java process, cgroup and previously verified tmux controller. No environment, command-line secrets or console history captured.
 - Docker and Podman unavailable on the SSH user's PATH. Passwordless sudo unavailable. Ubuntu restricts ordinary unprivileged namespace creation; runtime sandbox compatibility must be verified before any browser launch.
 
-The owner must explicitly authorise the graceful Minecraft stop; browser execution remains gated on verified shutdown, a post-stop baseline, runtime support and admission checks. Raw local samples are retained outside the repository for analysis.
+At this pre-stop stage, browser execution was gated on owner approval, verified shutdown, refreshed baselines, runtime support and admission. The approval and subsequent measurements are recorded below. Raw samples remain outside the repository.
 
 ## Authorised Minecraft shutdown
 
@@ -32,11 +45,11 @@ Measured over 60.5 seconds (61 samples) after the approved shutdown. No Minecraf
 - Swap occupied: 82.1 MiB; live counter deltas: 5 pages in, 0 pages out.
 - Last memory PSI: `some avg10=0.00 avg60=0.00 avg300=0.00 total=31231094; full avg10=0.00 avg60=0.00 avg300=0.00 total=29129937`.
 
-This is measured post-stop availability, not a browser allowance. Runtime/fixture overhead, the host safety reserve and the future-service reserve still need subtracting. Browser startup/restoration/memory remain unmeasured.
+This is measured post-stop availability, not a browser allowance. Runtime/fixture overhead, the host safety reserve and the future-service reserve still need subtracting. Browser measurements were taken only after runtime setup and the warmed baseline below.
 
 ## Runtime preparation
 
-The owner installed Podman. Read-only checks confirmed Podman 4.9.3, rootless operation, the systemd cgroup manager, cgroup v2 and seccomp support. A compatible runtime exists; Chromium sandbox operation has not yet been proven. A SHA256-verified official Node.js 22.23.4 toolchain was installed under the user's dedicated benchmark toolchain directory without sudo or changes to system services. `benchmark/runtime-check.sh` records the repeatable prerequisites.
+The owner installed Podman. Read-only checks confirmed Podman 4.9.3, rootless operation, the systemd cgroup manager, cgroup v2 and seccomp support. At this prerequisite stage the runtime was compatible; the later admitted smoke/pilot verified Chromium sandbox operation. A SHA256-verified official Node.js 22.23.4 toolchain was installed under the user's dedicated benchmark toolchain directory without sudo or changes to system services. `benchmark/runtime-check.sh` records the repeatable prerequisites.
 
 ## Lifecycle smoke verification
 
@@ -68,7 +81,7 @@ Run `continuous-1793085277671`, source `fd98838`, immutable image `499bbd2a8b04c
 - Sampled memory-time: approximately 284,554 MiB-seconds across 794.46 observed seconds, including the additional idle segment. This is trapezoidal sample integration, not exact physical-memory accounting.
 - Profile allocated bytes increased from 7,352,320 to 12,025,856 across the three existing pilot profiles.
 
-The host independently verified container/process termination before profile release. A five-minute post-cleanup sample is running before a fresh matched baseline and arm B. Process RSS and PSS are diagnostic views (median summed RSS 1,211.61 MiB; summed PSS 588.64 MiB), not values to add to cgroup memory: shared image/library pages can be charged to other cgroups. No inaccessible process samples occurred.
+The host independently verified container/process termination before profile release. Its five-minute cleanup sample passed before the fresh baseline and arm B. Process RSS and PSS are diagnostic views (median summed RSS 1,211.61 MiB; summed PSS 588.64 MiB), not values to add to cgroup memory: shared image/library pages can be charged to other cgroups. No inaccessible process samples occurred.
 
 ## Primary arm B — fresh-process rotation
 
@@ -83,7 +96,7 @@ Run `rotation-1793086469923` used the same `fd98838` source/image, four-target w
 - Allocated profile data increased by 2.24 MiB to 13.71 MiB across three profiles.
 - Three transient process-read races occurred during teardown; whole-cgroup kernel peak/CPU accounting remained available for every attempt. RSS/PSS diagnostics are not substituted for that accounting.
 
-The raw sampled memory integral covers 126.15 seconds between live cgroup samples and is approximately 26,357 MiB-seconds. Startup/teardown sampling gaps must be bounded and disclosed before comparison; it is not a complete 497-second time integral. The final five-minute settled sample is pending.
+The raw sampled memory integral covers 126.15 seconds between live cgroup samples and is approximately 26,357 MiB-seconds. Startup/teardown sampling gaps must be bounded and disclosed before comparison; it is not a complete 497-second time integral. The subsequent five-minute settled sample passed as detailed below.
 
 ## Separate final recovery suite
 
@@ -137,3 +150,44 @@ Measured start-to-ready: headless 1.429/1.442 seconds; headed 1.670–1.685 seco
 Retained failed optional preflights identified HTTP-only package mirror rejection, `xvfb-run` waiting as PID 1, a missing Xauthority environment for VNC, and the combined browser/client hitting a 256-task cap. HTTPS signed package sources, Podman's init process, a fixed ephemeral Xauthority path and separate viewer accounting corrected these issues. Two earlier passing combined-process trials are superseded by the final separate-cgroup measurement; none belong to primary clean-visit denominators. Optional image ID: `04a53ad64c16539e84c0f1211f8fdd06ebb9f98574dafbbb028b0299c583bc53`; packages: noVNC 1.3.0-2, x11vnc 0.9.16-10, websockify 0.10.0+dfsg1-5build2. The optional image adds these packages to the pinned Chromium image; results compare deployed modes, not a browser-only microbenchmark.
 
 The temporary VNC password is generated for the fixture run, redacted from diagnostics, and deleted after verified shutdown. This loopback-only experiment is not a production remote-access authentication/TLS design. Static short windows do not establish scrolling/video bandwidth, simultaneous premium-seller capacity or long-lived interactive reliability.
+
+
+## Protocol, software and startup accounting
+
+Host: Jarlaxle, Ubuntu 24.04.5, kernel 6.8.0-146-generic, Ryzen 5 5500U with 12 logical threads, 7.099 GiB usable RAM. Podman 4.9.3 runs rootless with systemd/cgroup v2. Host driver Node 22.23.4; image Node 24.22.1; Playwright 1.64.1; pinned package Chromium revision 1248, Chrome for Testing 156.0.8078.4. The actual primary image digest and source revision are recorded with each run above. New processes reused warm OS/image caches; no genuinely cold-cache experiment, cache eviction, host sysctl or swap tuning occurred.
+
+The warmed primary-A baseline had median MemAvailable 6,384.37 MiB. Its minimum minus the 1,090.40 MiB host guard and 1,536 MiB future-service reserve admitted a 3.662 GiB pool budget; the fresh B budget was 3.666 GiB. The earlier post-Minecraft-stop median was about 6.344 GiB. The later roughly 112 MiB availability difference includes fixture/runtime/tooling and host noise, not an isolated runtime-overhead measurement. The future application/database was not deployed; that reserve is policy, not measured PostgreSQL usage.
+
+Every primary attempt had a dedicated memory/CPU/swap-limited cgroup, peak accounting and verified termination. Last pre-ready startup samples were retained at 250 ms resolution: continuous launch current/observed peak 238.69/242.92 MiB; rotation median/max current 242.56/246.60 MiB and maximum observed startup peak 256.96 MiB. A final fraction of startup can occur after that last sample, so **whole-attempt kernel peaks**, not those startup samples, govern admission. One-second samples plus lifecycle boundaries captured the rest; startup integration gaps are bounded explicitly above. CPU figures are summed per-attempt cgroup core-seconds, not percent of a single core. Mean whole-host CPU busy was 1.25% during A and 6.74% during B across 12 logical threads, with the stated two-CPU limit on each attempt.
+
+## Decision gates
+
+| Mandatory gate | Result |
+| --- | --- |
+| Owner-approved Minecraft stop, verified exit, real pre/post/warmed baselines | PASS; no unrelated service stop or server-data/configuration change |
+| Matched primary workload/software/cadence/caps | PASS; four targets, 400 synthetic items, five-second cadence, identical primary image and source, 2 GiB cap, two CPUs, no browser swap |
+| At least 100 completed clean visits per arm | PASS; A 100, B 100 (34/33/33 profiles) |
+| At least 99% first-attempt success | PASS; 100/100 first attempts in each arm; zero retries or excluded warm-ups |
+| No observed isolation/ownership violations, no silent reseeding | PASS; identities/storage checked on every visit and duplicate/stale actors rejected |
+| Five committed-state crash recoveries and other declared recovery cases | PASS; all 16 final cases, including a 32.314-second complete hung-worker case within the 40-second bound |
+| Resource controls/accounting, no OOM/pressure breach | PASS; whole-attempt peaks/CPU available; swap-out and PSI full zero in primary arms; three disclosed transient RSS/PSS read gaps |
+| Complete termination and acceptable settled residual memory | PASS; 301 samples per five-minute window; no browsers survive; both drifts within 256 MiB |
+| Five active sellers every 15 minutes within one-slot 70% budget | PASS; 20 checks/hour required versus approximately 1,088 budgeted |
+
+**Decision: GO for the next bounded fixture change, at one slot.** No mandatory gate produced NO-GO or INCONCLUSIVE. Optional two/four-slot and interaction results support feasibility only within their short measured windows. A hundred successes are not statistical proof of a production 99% SLA. Earlier environment, locking and optional-display failures are retained and described; they were not removed from a primary run or relabelled as clean successes.
+
+## Verification and remaining risks
+
+Final TypeScript check and all **14 automated tests passed**, covering fixture identity/history/action state, storage paths, ownership/fencing, durable observations, resource admission/pressure and capacity/latency arithmetic. OpenSpec strict validation passed. The live primary comparison passed 200/200 planned visits; the final recovery suite passed 16/16 cases; two/four-slot modes passed three batches each; final interactive mode passed seven lifecycle checks. The host CLI generated all 864 capacity rows and matched the independent local calculation exactly. There is no separate configured linter; `git diff --check` checks formatting. Preflight failures are preserved as evidence rather than reported as currently passing tests.
+
+Authentication fixture success does not establish Facebook cookies, encryption-key/key-store compatibility, Messenger history recovery, service-worker state or anti-abuse outcomes. A fresh cookie was lost when an early preflight crashed immediately after login: confirm connection only after a clean persistence boundary and retain explicit recovery paths. No real account, private Facebook conversation, payment, AI inference or outgoing platform message was used. Meta authorisation remains an unresolved release gate; seller consent alone does not grant it. Polling cannot guarantee recovery of deleted or inaccessible events.
+
+Profiles are protected with owner-only permissions, tenant-specific mounts and sandboxed attempt containers, not a production encryption/key-management or tenant access-control system. A privileged host operator can access authenticated profiles; central hosting carries that account-session exposure. No CDP/VNC/container-management endpoints are published. The temporary loopback VNC mechanism is not a public access gateway; production identity checks, transport protection, revocation and secure-deletion policy remain future work. Local locks/files and flushed ledgers demonstrate one-host boundaries, not PostgreSQL transactions or distributed lease guarantees.
+
+The timing/space footprint of four tiny fixture pages is not representative of Facebook media, history replay or arbitrary listing counts. High-concurrency tests contain only three batches, and interactive tests use a static display for 15 seconds per mode. Long-duration contention, disk growth with real profiles, visual activity/bandwidth, seller-side browser behaviour and subscription economics remain unverified. Returning Minecraft or other workloads invalidates the tested capacity envelope until a new baseline/admission calculation.
+
+## Recommended next OpenSpec change
+
+Propose `schedule-bounded-fixture-visits`: deploy the smallest single-host durable queue (evaluate pg-boss with actual PostgreSQL overhead against the reserved 1.5 GiB), keep one admitted browser slot initially, preserve tenant flock/generation fencing through verified termination, coalesce duplicate due visits, apply timeouts/backpressure and deterministic fair scheduling, and consume observations after releasing Chromium. Exercise cancellation, stale jobs, restart reconciliation, unavailable sessions and an uncertain outgoing **fixture** action. Record runtime/queue metrics before expanding concurrency.
+
+Keep profiles at rest, create a fresh tenant process per visit, and keep business/optional AI processing outside browser occupancy. Temporary authentication/recovery can use an exclusively admitted headed session later; normal dashboard monitoring needs no permanent desktop. Do not include production Facebook, negotiation, inventory, OpenRouter, billing, multi-host scheduling or a full dashboard in that next change. Four workers and premium concurrency should remain opt-in experiments until longer representative measurements justify them. No OpenSpec main spec was rewritten or change archived automatically.
