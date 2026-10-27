@@ -38,3 +38,10 @@ test('sustained pressure stops, but an isolated low sample does not', () => {
   p.check({ ...s, available: 7 * GiB, psiFull: 2 });
   assert.throws(() => p.check({ ...s, available: 7 * GiB, psiFull: 2, time: 10_000 }), /host-pressure-stop/);
 });
+test('swap growth and absent pressure accounting fail safely without allocating memory', () => {
+  const s = { ...sampleHost(), time: 0, total: 8 * GiB, available: 7 * GiB, psiFull: 0, psiSome: 0, swapOutPages: 0 };
+  const swap = new PressureGuard(); swap.check(s);
+  assert.throws(() => swap.check({ ...s, time: 10_000, swapOutPages: 3000 }), /host-pressure-stop/);
+  assert.throws(() => new PressureGuard().check({ ...s, psiFull: null }), /missing-psi/);
+  assert.throws(() => admit({ ...s, psiFull: null }, 2 * GiB, 0, 1, 0, 3 * GiB), /accounting/);
+});
