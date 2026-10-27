@@ -25,7 +25,7 @@
 - [x] 4.2 Implement startup/outage reconciliation in fence-terminate-verify-replay-settle order, including local cleanup when PostgreSQL is unavailable; preserve ambiguous profile counters and malformed/truncated ledger evidence without reseeding.
 - [x] 4.3 Add the smallest authenticated, tenant-scoped read-only fixture action-status lookup and tests for tenant isolation, existing/missing IDs and unchanged action validation.
 - [x] 4.4 Implement explicit action dispatch with refreshed source/schedule state, durable uncertainty before send, and positive-evidence reconciliation across local `actionGate` and database records; test stale revisions, lost acknowledgements, duplicate IDs and fixture reset without blind resend.
-- [ ] 4.5 Add real-database fault tests at enqueue, claim, observation flush, browser release, completion acknowledgement and consumer transaction boundaries; assert no lost accepted intent, duplicate result or unsafe replacement dispatch.
+- [x] 4.5 Add real-database fault tests at enqueue, claim, observation flush, browser release, completion acknowledgement and consumer transaction boundaries; assert no lost accepted intent, duplicate result or unsafe replacement dispatch.
 
 ## 5. Measure and validate on the prepared fixture host
 

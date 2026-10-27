@@ -11,6 +11,7 @@
     "check": "tsc --noEmit",
     "test": "npm run build && node --test dist/test/*.test.js",
     "test:database": "npm run build && node --test --test-concurrency=1 dist/test/integration/*.test.js",
+    "test:fixture": "npm run build && node --test --test-concurrency=1 dist/test/live/*.test.js",
     "benchmark": "node dist/src/cli.js"
   },
   "dependencies": {
