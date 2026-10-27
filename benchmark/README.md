@@ -45,3 +45,9 @@ BENCH_REVISION=<source-commit> node dist/src/cli.js baseline /absolute/private/d
 This records a 60-second warmed baseline and a protected manifest with the minimum observed
 MemAvailable minus the host safety reserve and 1.5 GiB future-service reserve. It refuses a running
 Minecraft workload. Initial browser admission additionally requires 2 GiB; swap is not capacity.
+
+The optional final baseline argument declares cadence in milliseconds (default 60000). Primary arms
+must use that declared cadence: `node dist/src/cli.js continuous DATA 100 CADENCE_MS` then `rotation`
+with the same parameters. `pilot DATA 3 0` is a separate three-profile instrumentation check.
+`settle DATA` collects a five-minute post-shutdown sample. Arm A includes a five-minute idle segment.
+Use a freshly captured baseline after runtime changes; never interpret fixture timings as Facebook latency.

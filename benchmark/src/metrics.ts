@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, lstatSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { sampleHost, type HostSample } from './host.js';
 import { GiB, defaults } from './config.js';
@@ -57,4 +57,14 @@ export class PressureGuard {
 export function allowance(peak: number): number {
   if (!Number.isFinite(peak) || peak <= 0) throw Error('invalid-measured-peak');
   return Math.ceil(peak * 1.25 / (64 * 1024 ** 2)) * 64 * 1024 ** 2;
+}
+export function diskUsage(path: string): { logicalBytes: number; allocatedBytes: number; files: number } {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink()) return { logicalBytes: 0, allocatedBytes: 0, files: 0 };
+  const result = { logicalBytes: stat.size, allocatedBytes: stat.blocks * 512, files: 1 };
+  if (stat.isDirectory()) for (const name of readdirSync(path)) {
+    const child = diskUsage(join(path, name));
+    result.logicalBytes += child.logicalBytes; result.allocatedBytes += child.allocatedBytes; result.files += child.files;
+  }
+  return result;
 }

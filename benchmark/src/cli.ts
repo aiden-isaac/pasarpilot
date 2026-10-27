@@ -12,9 +12,11 @@ if (command === 'baseline' && dataRoot) {
   const root = initialise(dataRoot);
   if (minecraftPids().length) throw Error('minecraft-still-running');
   const origin = fixtureOrigin();
+  const cadenceMs = Number(process.argv[4] ?? defaults.cadenceMs);
+  if (!Number.isFinite(cadenceMs) || cadenceMs < 0) throw Error('invalid-cadence');
   const samples = await baseline();
   if (minecraftPids().length) throw Error('minecraft-restarted');
-  const manifest = { schemaVersion: 1, created: new Date().toISOString(), defaults,
+  const manifest = { schemaVersion: 1, created: new Date().toISOString(), defaults, cadenceMs,
     revision: process.env.BENCH_REVISION ?? 'unrecorded', node: process.version,
     runtime: podman(['--version']), image: inspect('localhost/pasarpilot-benchmark:v1').Id,
     fixtureOrigin: origin, hostSamples: samples, poolBudget: budget(samples),
@@ -25,6 +27,11 @@ if (command === 'baseline' && dataRoot) {
   console.log(JSON.stringify({ baseline: 'complete', poolBudget: manifest.poolBudget, samples: samples.length }));
 } else if (command === 'smoke' && dataRoot) {
   await (await import('./smoke.js')).smoke(initialise(dataRoot));
+} else if (['pilot', 'continuous', 'rotation'].includes(command ?? '') && dataRoot) {
+  await (await import('./runner.js')).run(initialise(dataRoot), command as 'pilot' | 'continuous' | 'rotation',
+    Number(process.argv[4] ?? (command === 'pilot' ? 3 : 100)), Number(process.argv[5] ?? defaults.cadenceMs));
+} else if (command === 'settle' && dataRoot) {
+  await (await import('./runner.js')).settle(initialise(dataRoot));
 } else {
   console.log('Usage: node dist/src/cli.js baseline PRIVATE_DATA_ROOT');
   if (command) process.exitCode = 2;
