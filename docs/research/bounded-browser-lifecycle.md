@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation in progress. Arm A has completed; rotation and final reclamation/capacity gates remain pending. Host and fixture results below are measurements, not Facebook capacity.
+Implementation in progress. Both 100-visit primary arms have completed; final reclamation and optional-mode/capacity gates remain pending. Host and fixture results below are measurements, not Facebook capacity.
 
 ## Pre-stop baseline
 
@@ -69,3 +69,18 @@ Run `continuous-1793085277671`, source `fd98838`, immutable image `499bbd2a8b04c
 - Profile allocated bytes increased from 7,352,320 to 12,025,856 across the three existing pilot profiles.
 
 The host independently verified container/process termination before profile release. A five-minute post-cleanup sample is running before a fresh matched baseline and arm B. Process RSS and PSS are diagnostic views (median summed RSS 1,211.61 MiB; summed PSS 588.64 MiB), not values to add to cgroup memory: shared image/library pages can be charged to other cgroups. No inaccessible process samples occurred.
+
+## Primary arm B — fresh-process rotation
+
+Run `rotation-1793086469923` used the same `fd98838` source/image, four-target workload, five-second cadence and 2 GiB cap as arm A, after A's verified shutdown, five-minute settled sample and fresh 60-second baseline. All 100 planned visits succeeded on the first attempt, with zero retries, failures or excluded warm-ups: 34/33/33 visits across the three profiles. Profiles were seeded in the separate pilot and never reseeded during either primary arm.
+
+- Total wall time: **497.31 seconds**; 100 fresh containers, each verified stopped before release.
+- Whole-attempt cgroup peak: **281.55 MiB**; zero OOM/max events. The larger continuous-arm peak governs later headroom calibration.
+- Complete occupied-slot duration mean/median/p95/max: **2.316/2.315/2.357/2.374 seconds**, including launch, restoration, extraction, durable observation, shutdown and ownership release.
+- Worker Chromium launch-to-ready median/p95: 707/723 ms; fixture/storage restoration: 126/141 ms; inspection: 223/254 ms; observation flush: 5.8/7.2 ms; verified shutdown/release: 496/514 ms. Container creation and supervisory work account for the remaining occupied time.
+- CPU: 277.22 core-seconds; throttled time: 61.24 seconds under the unchanged two-CPU cap. Rotation saved resident memory while using more CPU/startup work than the continuous control.
+- Host minimum MemAvailable: 6,067.91 MiB; no swap-in/out; maximum memory PSI full avg10: zero.
+- Allocated profile data increased by 2.24 MiB to 13.71 MiB across three profiles.
+- Three transient process-read races occurred during teardown; whole-cgroup kernel peak/CPU accounting remained available for every attempt. RSS/PSS diagnostics are not substituted for that accounting.
+
+The raw sampled memory integral covers 126.15 seconds between live cgroup samples and is approximately 26,357 MiB-seconds. Startup/teardown sampling gaps must be bounded and disclosed before comparison; it is not a complete 497-second time integral. The final five-minute settled sample is pending.
