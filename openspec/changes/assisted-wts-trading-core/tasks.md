@@ -21,7 +21,7 @@
 
 ## 4. Implement atomic claims reservations and review
 
-- [ ] 4.1 Implement the narrow claim/backup grammar and classification, including ambiguous/conditional/multi-item requests and repeated claims against an active buyer/item order; test that only valid complete claims attempt allocation.
+- [x] 4.1 Implement the narrow claim/backup grammar and classification, including ambiguous/conditional/multi-item requests and repeated claims against an active buyer/item order; test that only valid complete claims attempt allocation.
 - [ ] 4.2 Implement row-locked global/listing allocation with full-quantity guards, order/hold snapshots, unique active claims and atomic event-result/proposal/activity writes; test rollback and competing allocations through two independent database connections and two listings sharing one unit.
 - [ ] 4.3 Implement eligible backup ordering and guarded promotion, same-item automatic versus explicit cross-listing promotion, terminal/withdrawn exclusions and sold-out dispositions; test quantity fit, tie-breakers and no repeated promotion.
 - [ ] 4.4 Implement database-time 15-minute holds, idempotent unpaid cancellation/release, expiry wake-ups plus startup/periodic/lazy sweeps, bounded seller extensions and transactional backup promotion; test downtime, repeated jobs, expired extensions and cancellation/expiry/allocation races.
