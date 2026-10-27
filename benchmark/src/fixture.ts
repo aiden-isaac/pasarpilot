@@ -47,6 +47,11 @@ export function fixture(): Server {
         sessions.delete(token!); send(200, { expired: true }); return;
       }
       if (state.locked) { send(423, { error: 'history-unavailable' }); return; }
+      const actionStatus = path.match(/^\/api\/actions\/([a-zA-Z0-9-]{1,64})$/);
+      if (actionStatus && req.method === 'GET') {
+        const revision = state.actions.get(actionStatus[1]!);
+        send(200, { id: actionStatus[1], applied: revision !== undefined, revision: revision ?? null }); return;
+      }
       if (path === '/api/action' && req.method === 'POST') {
         const input = JSON.parse(body);
         if (typeof input.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(input.id) || !Number.isInteger(input.revision)) {

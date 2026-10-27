@@ -21,6 +21,9 @@ test('fixture separates identities, history readiness, stale actions and authent
     assert.equal((await fetch(`${base}/seed/unknown`, { method: 'POST' })).status, 400);
     assert.equal((await request('/api/action', a, { id: 'effect-1', revision: 2 })).status, 409);
     assert.equal((await request('/api/action', a, { id: 'effect-1', revision: 0 })).status, 200);
+    assert.deepEqual(await (await request('/api/actions/effect-1')).json(), { id: 'effect-1', applied: true, revision: 1 });
+    assert.deepEqual(await (await request('/api/actions/effect-1', b)).json(), { id: 'effect-1', applied: false, revision: null });
+    assert.equal((await fetch(`${base}/api/actions/effect-1`)).status, 401);
     assert.equal((await request('/api/action', a, { id: 'effect-1', revision: 1 })).status, 409);
     await request('/api/history', a, { locked: true });
     assert.equal((await request('/target/1')).status, 423);
