@@ -2,6 +2,7 @@ import { chromium, type BrowserContext } from 'playwright';
 import { createInterface } from 'node:readline';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
+import { randomUUID } from 'node:crypto';
 import { assertLease, assertAutomation, type Lease } from './ownership.js';
 import { verifySandbox } from './sandbox.js';
 import { sampleAttempt } from './metrics.js';
@@ -9,6 +10,24 @@ import { sampleAttempt } from './metrics.js';
 const leaseFile = '/attempt/lease.json';
 const expected: Lease = JSON.parse(readFileSync(leaseFile, 'utf8'));
 const check = () => assertLease(JSON.parse(readFileSync(leaseFile, 'utf8')), expected);
+const input = createInterface({ input: process.stdin });
+const guards = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
+input.on('line', line => {
+  const reply = JSON.parse(line);
+  if (typeof reply.guardId !== 'string') return;
+  const pending = guards.get(reply.guardId); guards.delete(reply.guardId);
+  if (reply.error) pending?.reject(Error(reply.error)); else pending?.resolve();
+});
+async function checkpoint() {
+  check();
+  if (expected.operationGuard) await new Promise<void>((resolve, reject) => {
+    const guardId = randomUUID();
+    const timer = setTimeout(() => { guards.delete(guardId); reject(Error('operation-guard-timeout')); }, 10_000);
+    guards.set(guardId, { resolve: () => { clearTimeout(timer); resolve(); }, reject: error => { clearTimeout(timer); reject(error); } });
+    console.log(JSON.stringify({ guard: true, guardId }));
+  });
+  check();
+}
 const origin = process.env.FIXTURE_ORIGIN!;
 if (!origin || process.getuid?.() === 0) throw Error('unsafe-worker');
 mkdirSync('/tmp/home', { recursive: true, mode: 0o700 });
@@ -18,7 +37,7 @@ const launch = performance.now();
 async function close() { await context?.close(); context = undefined; }
 process.on('SIGTERM', () => { void close().finally(() => process.exit()); });
 try {
-  check();
+  await checkpoint();
   context = await chromium.launchPersistentContext('/profile', {
     headless: process.env.HEADED !== 'true', channel: 'chromium', chromiumSandbox: true,
     timeout: 60_000, acceptDownloads: false,
@@ -33,17 +52,18 @@ try {
     return url.origin === origin ? route.continue() : route.abort('blockedbyclient');
   });
   console.log(JSON.stringify({ ready: true, startupMs: performance.now() - launch, sandbox: true }));
-  const input = createInterface({ input: process.stdin });
   for await (const line of input) {
     const command = JSON.parse(line);
+    if (command.guardId) continue;
     try {
       if (command.op === 'close') {
         await close();
         console.log(JSON.stringify({ id: command.id, closed: true, resources: sampleAttempt('/sys/fs/cgroup') }));
         break;
       }
-      check();
+      await checkpoint();
       if (command.op === 'control') {
+        if (typeof command.path !== 'string' || !/^\/(api\/(history|expire|action)|seed\/seller-[abc])$/.test(command.path)) throw Error('invalid-control-path');
         const response = await context.request.post(origin + command.path, { data: command.data });
         console.log(JSON.stringify({ id: command.id, status: response.status(), result: await response.json() })); continue;
       }
@@ -54,15 +74,17 @@ try {
         const response = await context.request.post(`${origin}/seed/${expected.tenant}`);
         if (response.status() !== 200) throw Error('seed-failed');
       }
-      check();
+      await checkpoint();
       const response = await context.request.get(`${origin}/api/state`);
       if (response.status() === 401) throw Error('reauth-required');
       if (response.status() !== 200) throw Error('fixture-unavailable');
       const state = await response.json();
       if (state.tenant !== expected.tenant) throw Error('isolation-failure');
       if (!state.historyReady) throw Error('history-unavailable');
+      await checkpoint();
       await page.goto(`${origin}/target/1`, { waitUntil: 'load', timeout: 30_000 });
       await page.waitForFunction(() => 'fixtureStorage' in window);
+      await checkpoint();
       const counter = await page.evaluate(async ({ tenant, counter, seed, inspectOnly }) => {
         const fn = (window as unknown as { fixtureStorage: (t: string, n: number, s: boolean, v: boolean) => Promise<number> }).fixtureStorage;
         return fn(tenant, counter, seed, inspectOnly);
@@ -71,13 +93,13 @@ try {
       const inspectStart = performance.now();
       let events = 0;
       for (let n = 1; n <= 4; n++) {
-        check();
+        await checkpoint();
         if (n > 1) await page.goto(`${origin}/target/${n}`, { waitUntil: 'load', timeout: 30_000 });
         const count = await page.locator('[data-event]').count();
         if (count !== 100) throw Error('partial-inspection');
         events += count;
       }
-      check();
+      await checkpoint();
       console.log(JSON.stringify({ id: command.id, tenant: expected.tenant, counter,
         revision: state.revision, events, restorationMs, inspectionMs: performance.now() - inspectStart }));
     } catch (error) {

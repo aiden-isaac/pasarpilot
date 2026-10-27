@@ -33,7 +33,7 @@ export class Session {
   shutdownFailure?: string;
   finalResources?: ReturnType<typeof sampleAttempt>;
   private stopping?: Promise<boolean>;
-  constructor(readonly owner: Ownership, capBytes: number, origin: string, headed = false) {
+  constructor(readonly owner: Ownership, capBytes: number, origin: string, headed = false, beforeOperation?: () => Promise<void>) {
     const args = ['run', '--http-proxy=false', '-i', '--name', owner.lease.container,
       '--label', `${label}=true`, '--label', `io.pasarpilot.root=${rootLabel(owner.root)}`,
       '--network', 'pasarpilot-benchmark', '--userns', 'keep-id', '--user', `${process.getuid!()}:${process.getgid!()}`,
@@ -70,7 +70,14 @@ export class Session {
       createInterface({ input: this.child.stdout }).on('line', line => {
         try {
           const value = JSON.parse(line) as Reply;
-          if (value.ready) { clearInterval(startupMetrics); clearTimeout(timer); resolveReady(value); }
+          if (value.guard === true && typeof value.guardId === 'string') {
+            const guardId = value.guardId;
+            void Promise.resolve().then(async () => {
+              if (!beforeOperation) throw Error('operation-guard-unavailable');
+              await beforeOperation(); this.owner.check();
+            }).then(() => this.child.stdin.write(JSON.stringify({ guardId }) + '\n'),
+              error => this.child.stdin.write(JSON.stringify({ guardId, error: error instanceof Error ? error.message : 'operation-rejected' }) + '\n'));
+          } else if (value.ready) { clearInterval(startupMetrics); clearTimeout(timer); resolveReady(value); }
           else if (value.id) {
             const p = this.pending.get(value.id); this.pending.delete(value.id);
             if (value.error) p?.reject(Error(value.error)); else p?.resolve(value);

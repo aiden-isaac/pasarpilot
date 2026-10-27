@@ -5,10 +5,12 @@ import { writeJson } from './storage.js';
 import { SchedulerStore } from './scheduler-store.js';
 import { schedulerRoot, tenant, actionId } from './schedule.js';
 
+import { runScheduler, type SchedulerManifest } from './scheduler.js';
 export async function schedulerCommand(command: string, dataRoot: string, args: string[]) {
   const root = schedulerRoot(dataRoot);
   const setup = command === 'scheduler-setup';
   const store = await SchedulerStore.open(root, setup, setup ? Number(args[0] ?? 60_000) : 60_000);
+  const manifest = () => JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8')) as SchedulerManifest;
   try {
     if (setup) {
       const metadata = { schemaVersion: 1, root, node: process.version, pgBoss: '10.4.2', pg: '8.23.1',
@@ -30,6 +32,9 @@ export async function schedulerCommand(command: string, dataRoot: string, args: 
       const [t, state, every] = args;
       if (state !== 'enabled' && state !== 'disabled') throw Error('expected-enabled-or-disabled');
       await store.configure(t!, state === 'enabled', every === undefined ? undefined : Number(every));
+    }
+    else if (command === 'scheduler-run') {
+      await runScheduler(store, manifest(), Number(args[0] ?? 100));
     }
     else throw Error('unknown-scheduler-command');
   } finally { await store.close(); }
