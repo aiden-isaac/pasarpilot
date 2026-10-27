@@ -4,5 +4,6 @@ COPY package.json package-lock.json ./
 COPY node_modules/playwright ./node_modules/playwright
 COPY node_modules/playwright-core ./node_modules/playwright-core
 COPY dist/src ./dist/src
+RUN chmod -R a+rX package.json package-lock.json node_modules dist
 USER pwuser
 ENTRYPOINT ["node"]

@@ -2,8 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 export const label = 'io.pasarpilot.benchmark';
-export function podman(args: string[]): string {
-  return execFileSync('podman', args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024 }).trim();
+export function podman(args: string[], timeout = 60_000): string {
+  return execFileSync('podman', args, { encoding: 'utf8', timeout, maxBuffer: 1024 * 1024 }).trim();
 }
 export function inspect(name: string): any { return JSON.parse(podman(['inspect', name]))[0]; }
 export function rootLabel(root: string): string { return createHash('sha256').update(resolve(root)).digest('hex'); }

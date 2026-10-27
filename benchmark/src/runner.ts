@@ -1,16 +1,17 @@
-import { existsSync, readFileSync, appendFileSync } from 'node:fs';
+import { readFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { performance } from 'node:perf_hooks';
 import { Ownership, holdLock } from './ownership.js';
 import { Session } from './runtime.js';
 import { heartbeat as keepLease, reconcile } from './recovery.js';
-import { inspect, fixtureOrigin, podman } from './container.js';
+import { inspect, fixtureOrigin } from './container.js';
 import { admit, PressureGuard, sampleAttempt, allowance, diskUsage } from './metrics.js';
 import { sampleHost, minecraftPids, baseline } from './host.js';
 import { defaults } from './config.js';
 import { initialise, writeJson } from './storage.js';
-import { appendObservation, observations } from './events.js';
+import { observations } from './events.js';
+import { inspectVisit, closeVisit } from './visit.js';
 
 export type VisitResult = { tenant: string; ok: boolean; occupiedMs: number; startupMs: number;
   restorationMs?: number; inspectionMs?: number; flushMs?: number; shutdownMs?: number; error?: string };
@@ -52,13 +53,11 @@ export async function run(root: string, mode: 'pilot' | 'continuous' | 'rotation
     // Stop sampling the disappearing cgroup only after retaining its final live counters.
     collect();
     const currentSession = session; session = undefined;
-    const dead = await currentSession.stop();
+    await closeVisit(owner, currentSession, failure?.message.includes('reauth') || failure?.message.includes('history-unavailable') ? 'reauth-required' : 'stored');
     if (currentSession.finalResources) attemptSamples.push({ tenant: owner.lease.tenant,
       attempt: owner.lease.attempt, sample: currentSession.finalResources });
-    if (!dead) throw Error('termination-unproven');
-    await owner.release(true, failure?.message.includes('reauth') || failure?.message.includes('history-unavailable') ? 'reauth-required' : 'stored');
     stopHeartbeat?.(); stopHeartbeat = undefined;
-    podman(['rm', currentSession.owner.lease.container]); owner = undefined;
+    owner = undefined;
     return performance.now() - start;
   };
   const start = async (tenant: string) => {
@@ -83,15 +82,7 @@ export async function run(root: string, mode: 'pilot' | 'continuous' | 'rotation
       const tenant = mode === 'continuous' ? 'seller-a' : ['seller-a', 'seller-b', 'seller-c'][i % 3]!;
       try {
         if (!session) await start(tenant);
-        const counterFile = join(root, 'locks', `${tenant}.counter.json`);
-        const seed = !existsSync(counterFile);
-        const counter = seed ? 0 : JSON.parse(readFileSync(counterFile, 'utf8')).counter;
-        if (seed) writeJson(counterFile, { counter: 0, seedAttempted: true });
-        const reply = await session!.send({ op: 'visit', counter, seed });
-        const flushStart = performance.now();
-        appendObservation(owner!, Number(reply.counter), Number(reply.events));
-        writeJson(counterFile, { counter: reply.counter, seedAttempted: true });
-        const flushMs = performance.now() - flushStart;
+        const { reply, flushMs } = await inspectVisit(owner!, session!);
         const shutdownMs = mode === 'continuous' ? 0 : await stop();
         const result: VisitResult = { tenant, ok: true, occupiedMs: performance.now() - visitStart,
           startupMs: mode === 'continuous' && i > 0 ? 0 : startupMs,

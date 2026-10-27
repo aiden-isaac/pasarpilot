@@ -14,7 +14,7 @@
 
 ## 3. Connect the existing browser lifecycle safely
 
-- [ ] 3.1 Search all lifecycle callers and extract only shared fresh-process visit/cleanup code from `runner.ts`; preserve continuous/concurrency/interactive/fault/smoke behaviour and existing report contracts, and run the existing TypeScript checks/tests.
+- [x] 3.1 Search all lifecycle callers and extract only shared fresh-process visit/cleanup code from `runner.ts`; preserve continuous/concurrency/interactive/fault/smoke behaviour and existing report contracts, and run the existing TypeScript checks/tests.
 - [ ] 3.2 Hold the dataset supervisor lock through reconciliation/shutdown, reject competing benchmark/scheduler access, and associate each claimed job with persisted profile generation/attempt ownership before launch; test competing/stale owners.
 - [ ] 3.3 Add pre-launch and operation-boundary job checks, resource admission, heartbeat, cancellation and pressure handling; require verified empty process-tree/cgroup before profile or slot reuse, and halt dispatch when termination is unproven.
 - [ ] 3.4 Implement distinct authentication/history recovery-required states and explicit validated fixture recovery/resume with a new schedule revision; test that blocked tenants stop generating work while healthy tenants continue.
