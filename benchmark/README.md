@@ -1,7 +1,7 @@
 # Controlled browser lifecycle benchmark
 
 This workspace implements the synthetic lifecycle experiment and the bounded fixture scheduler in
-`openspec/changes/benchmark-bounded-browser-lifecycle/` and `openspec/changes/schedule-bounded-fixture-visits/`.
+`openspec/changes/benchmark-bounded-browser-lifecycle/` and `openspec/changes/archive/2026-10-27-schedule-bounded-fixture-visits/`.
 No Facebook, AI or trading integration.
 
 Use Node.js 20 or newer, then `npm ci`, `npm run check`, `npm test` from this directory.

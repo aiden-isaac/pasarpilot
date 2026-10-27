@@ -139,7 +139,7 @@ baseline's Git revision was unrecorded; exact working-tree snapshots provide its
 Cleanup removes only the selected database container, fixture and empty labelled private network
 after verifying no browser descendants remain. Database/profile/evidence directories are retained.
 Minecraft was already stopped and remains stopped; no world data, configuration or unrelated service
-was changed. Neither OpenSpec change is archived automatically.
+was changed. The scheduler change was archived at the owner's request on 2026-10-27; the benchmark change remains unarchived.
 
 The [runbook](../../benchmark/README.md#durable-single-slot-fixture-scheduler) covers setup, finite runs,
 status, cancellation, session/action reconciliation, rollback and separate unit/database/live checks.

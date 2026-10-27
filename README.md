@@ -43,7 +43,7 @@ All experiment containers and their private network were removed after measureme
 
 ## Completed fixture scheduler
 
-OpenSpec change: [`schedule-bounded-fixture-visits`](openspec/changes/schedule-bounded-fixture-visits/proposal.md). It adds durable jobs, round-robin tenant turns, coalescing/backpressure, cancellation, restart reconciliation and browser-free consumption while retaining one admitted browser slot.
+OpenSpec change: [`schedule-bounded-fixture-visits`](openspec/changes/archive/2026-10-27-schedule-bounded-fixture-visits/proposal.md). It adds durable jobs, round-robin tenant turns, coalescing/backpressure, cancellation, restart reconciliation and browser-free consumption while retaining one admitted browser slot.
 
 On Jarlaxle, **102/102 planned clean visits passed**, 34 per tenant, with no retries. Mean/p95 occupied time was **2.387/2.461 seconds**; browser peak was **298.80 MiB**, and concurrent database plus scheduler memory peaked at **147.56 MiB**. All 19 unit tests, three database integration tests and 16 controlled recovery cases passed. See the [measured scheduler evidence and limitations](docs/research/bounded-fixture-scheduling.md) and [runbook](benchmark/README.md#durable-single-slot-fixture-scheduler).
 
