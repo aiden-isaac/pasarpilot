@@ -38,6 +38,6 @@
 
 ## 6. Publish the scoped outcome and runbook
 
-- [ ] 6.1 Add reproducible setup/run/status/cancel/recover/rollback and separate unit/database/live validation commands to `benchmark/README.md`; update the root README with the implemented fixture-only scope and actual outcome.
+- [x] 6.1 Add reproducible setup/run/status/cancel/recover/rollback and separate unit/database/live validation commands to `benchmark/README.md`; update the root README with the implemented fixture-only scope and actual outcome.
 - [ ] 6.2 Write `docs/research/bounded-fixture-scheduling.md` with PASS/FAIL/INCONCLUSIVE gates, first-attempt and retry denominators, fairness/backlog/resource/recovery evidence, retained artifacts and limitations; distinguish measurements from policies/projections and preserve completed benchmark evidence.
 - [ ] 6.3 Run TypeScript checks, existing/new unit tests, explicit PostgreSQL integration tests, OpenSpec strict validation and whitespace checks; record unavailable live checks honestly and do not archive either change automatically.

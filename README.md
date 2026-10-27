@@ -2,7 +2,7 @@
 
 PasarPilot is a planned self-hosted trading assistant for sellers in Facebook buy/sell communities, initially the Malaysian Magic: The Gathering community. Buyers would continue using comments and Messenger; sellers would manage listings, claims, conversations and fulfilment from a native dashboard.
 
-**Current status:** this repository contains a completed browser-lifecycle experiment, research and OpenSpec planning artifacts. The SaaS application, production scheduler and Facebook integration have not been built.
+**Current status:** this repository contains a completed browser-lifecycle experiment and a tested single-slot durable fixture scheduler using PostgreSQL/pg-boss, plus research and OpenSpec artifacts. The SaaS application, production scheduler and Facebook integration have not been built.
 
 ## Architecture direction
 
@@ -10,7 +10,8 @@ Use a bounded pool of short-lived, tenant-isolated Chromium processes with selle
 
 ```mermaid
 flowchart LR
-    Driver[Fixture driver] --> Admission[Resource admission and exclusive profile lease]
+    Jobs[(Private PostgreSQL / pg-boss)] --> Driver[Durable fixture scheduler]
+    Driver --> Admission[Resource admission and exclusive profile lease]
     Profile[(Selected persistent profile)] --> Browser[Fresh sandboxed Chromium container]
     Admission --> Browser
     Browser --> Fixture[Private synthetic fixture]
@@ -18,7 +19,7 @@ flowchart LR
     Events --> Consumer[Browser-free consumer]
 ```
 
-The normal product should use its dashboard without a permanently running remote desktop. Temporary headed sessions can support authentication or recovery; interactive access consumes separately admitted capacity. PostgreSQL/pg-boss and selective OpenRouter inference remain future work.
+The normal product should use its dashboard without a permanently running remote desktop. Temporary headed sessions can support authentication or recovery; interactive access consumes separately admitted capacity. PostgreSQL/pg-boss now backs the synthetic scheduler; production integration and selective OpenRouter inference remain future work.
 
 ## Completed experiment
 
@@ -40,6 +41,14 @@ Measured on Jarlaxle on 2026-10-27, with approximately 7.1 GiB usable RAM and Mi
 
 All experiment containers and their private network were removed after measurement. Retained raw evidence and synthetic profiles stay outside Git. Minecraft was left stopped at experiment cleanup; future host changes require a fresh resource baseline.
 
+## Completed fixture scheduler
+
+OpenSpec change: [`schedule-bounded-fixture-visits`](openspec/changes/schedule-bounded-fixture-visits/proposal.md). It adds durable jobs, round-robin tenant turns, coalescing/backpressure, cancellation, restart reconciliation and browser-free consumption while retaining one admitted browser slot.
+
+On Jarlaxle, **102/102 planned clean visits passed**, 34 per tenant, with no retries. Mean/p95 occupied time was **2.387/2.461 seconds**; browser peak was **298.80 MiB**, and concurrent database plus scheduler memory peaked at **147.56 MiB**. All 19 unit tests, three database integration tests and 16 controlled recovery cases passed. See the [measured scheduler evidence and limitations](docs/research/bounded-fixture-scheduling.md) and [runbook](benchmark/README.md#durable-single-slot-fixture-scheduler).
+
+Fixture reset can change its origin and invalidate stored authentication/history; recovery refuses missing markers and retains uncertain actions. This result covers one synthetic host/slot, with raw evidence retained privately outside Git.
+
 ## Local development checks
 
 Use Node.js 20 or newer, as declared by the benchmark package. The measured host used Node.js 22.23.4; the Playwright image used Node.js 24.22.1. No browser or container runtime is needed for these checks:
@@ -56,6 +65,7 @@ Browser execution requires a prepared Linux host with rootless Podman, cgroup v2
 ## Documentation
 
 - [Measured results, decision gates, limitations and implementation commits](docs/research/bounded-browser-lifecycle.md)
+- [Durable fixture scheduler results, recovery evidence and limitations](docs/research/bounded-fixture-scheduling.md)
 - [Capacity, queue latency and cost trade-offs](docs/research/bounded-browser-capacity.md), including the [864-scenario projection matrix](docs/research/bounded-browser-capacity.csv)
 - [Sanitised Facebook UI observations and unresolved assumptions](docs/research/facebook-ui.md)
 - OpenSpec [proposal](openspec/changes/benchmark-bounded-browser-lifecycle/proposal.md), [design](openspec/changes/benchmark-bounded-browser-lifecycle/design.md), [lifecycle requirements](openspec/changes/benchmark-bounded-browser-lifecycle/specs/bounded-browser-lifecycle/spec.md), [resource requirements](openspec/changes/benchmark-bounded-browser-lifecycle/specs/browser-resource-benchmark/spec.md) and [completed tasks](openspec/changes/benchmark-bounded-browser-lifecycle/tasks.md)
@@ -70,4 +80,4 @@ The intended first seller workflow is WTS claims through seller-confirmed paymen
 - A payment screenshot alone must never mark an order paid. Verification needs seller approval after checking a trusted account or a trusted payment provider.
 - Keep real credentials, profiles, messages and raw browser artifacts out of Git. Do not expose CDP, VNC or container-management endpoints publicly.
 
-The recommended next scoped change is `schedule-bounded-fixture-visits`: one host, one admitted browser slot, durable jobs, fair scheduling, backpressure and restart reconciliation against the fixture. Real-platform integration and higher production concurrency require separate approval and evidence.
+The scoped `schedule-bounded-fixture-visits` change is implemented and validated. Real-platform integration and higher production concurrency still require separate approval and evidence.

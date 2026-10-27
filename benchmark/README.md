@@ -195,6 +195,84 @@ conservative 1.5 GiB future-service reserve. Separate service samples check data
 plus scheduler RSS against a further 1.5 GiB planning envelope; this sum is deliberately conservative.
 Unsafe admission defers without taking a queue claim; pressure/accounting failures stop execution.
 
+After the pilot, update each schedule to a declared cadence and run a separately recorded clean
+sample. Ten seconds per tenant was selected for the synthetic acceptance run; it is accelerated
+fixture timing. A just-started schedule coalesces to the latest due time, so its first freshness window
+can be shorter than an interval. For a synchronised acceptance run, set a future common `next_due`
+in the private schema before starting, and record that preparation with the plan. Do not hide skipped
+or expired attempts by restarting the denominator.
+
+```sh
+node --input-type=module - "$SCHEDULER_DATA_ROOT" <<'JS'
+import { readFileSync } from 'node:fs';
+import { SchedulerStore } from './dist/src/scheduler-store.js';
+import { runScheduler } from './dist/src/scheduler.js';
+const root = process.argv[2], store = await SchedulerStore.open(root);
+try {
+  for (const tenant of ['seller-a','seller-b','seller-c']) await store.configure(tenant,true,10000);
+  await store.pool.query(`UPDATE ${store.schema}.schedule SET next_due=now()+make_interval(secs => 3)`);
+  await runScheduler(store,JSON.parse(readFileSync(root+'/manifest.json','utf8')),102);
+} finally { await store.close(); }
+JS
+```
+
+`scheduler-run DATA COUNT` is a finite dispatcher invocation; its results retain every dispatched
+attempt, including skips and retries. Successful clean acceptance requires the predeclared planned
+count (at least 100), at least 33 completions per tenant and 99% first-attempt success. The invocation's
+`complete` field means its dispatch count finished, not that all outcomes passed. Schedules/accepted
+pending jobs persist when it exits or receives SIGINT/SIGTERM; another invocation reconciles before
+resuming. Use `scheduler-configure DATA TENANT disabled` for durable schedule disablement.
+
+The following commands use only synthetic fixture identities:
+
+```sh
+ACTION_DEADLINE_MS=$(node -e 'console.log(Date.now() + 120000)')
+node dist/src/cli.js scheduler-action "$SCHEDULER_DATA_ROOT" seller-a effect-1 0 "$ACTION_DEADLINE_MS"
+node dist/src/cli.js scheduler-cancel "$SCHEDULER_DATA_ROOT" JOB_UUID
+node dist/src/cli.js scheduler-recover "$SCHEDULER_DATA_ROOT" seller-a verify
+node dist/src/cli.js scheduler-recover "$SCHEDULER_DATA_ROOT" seller-a history
+node dist/src/cli.js scheduler-recover "$SCHEDULER_DATA_ROOT" seller-a auth
+node dist/src/cli.js scheduler-reconcile-action "$SCHEDULER_DATA_ROOT" seller-a effect-1
+node dist/src/cli.js scheduler-dispose-action "$SCHEDULER_DATA_ROOT" seller-a effect-1 abandon
+node dist/src/cli.js scheduler-reconcile "$SCHEDULER_DATA_ROOT"
+```
+
+Use the current fixture source revision and a future absolute deadline (Unix milliseconds).
+Duplicate tenant/action IDs return their existing outcome, including
+after expiry. Stale revisions never send. Ambiguous actions remain uncertain and occupy that tenant's
+action allowance; a positive read-only fixture lookup can mark applied. A missing lookup never
+authorises resend. `abandon` is an explicit operator disposition, not proof that no effect occurred.
+Authentication/history recovery validates committed profile markers before resuming and increments
+the schedule revision. `auth` explicitly creates a new synthetic fixture session; it does not recreate
+the browser profile or restore lost action history.
+
+On startup, the supervisor locks the dataset, fences old ownership, stops only matching labelled
+attempts, verifies process absence, replays flushed observations and settles interrupted jobs. A queue
+or lease timeout alone never releases the profile/slot. Worker checkpoints check current queue intent
+before each fixture operation. A deadline caps work at 120 seconds and cleanup at another 40;
+the queue expiry is 180 seconds. Only transient observation failures retry, at most twice at 30/60
+seconds while current. Unproven termination halts dispatch. Database failure triggers local cleanup;
+restart the database explicitly and start a new supervisor for reconciliation. Do not reseed profiles
+to hide counter mismatches or truncated ledgers. Previously flushed state is the crash boundary.
+
+Validation commands are separate so `npm test` requires no database, container or browser:
+
+```sh
+npm run check
+npm test
+export PGHOST="$SCHEDULER_DATA_ROOT/socket"
+npm run test:database
+SCHEDULER_DATA_ROOT="$SCHEDULER_DATA_ROOT" npm run test:fixture
+```
+
+Database tests create and drop only their own uniquely named test schemas in the explicitly selected
+database. For local database-only checks, `sh prepare-scheduler-db.sh NEW_PRIVATE_ROOT docker` is
+supported. It does not establish Podman/sandbox/host acceptance. The fixture fault suite takes the
+parent supervisor lock, uses a separate retained dataset/schema, kills only its own child supervisors
+and attempts, and deliberately stops/restarts the selected scheduler database. Run it only while the
+normal dispatcher is idle. It covers crash boundaries, a surviving expired owner, active cancellation
+and revision changes, unavailable sessions, uncertain actions, database outage and malformed evidence.
+
 Rollback/cleanup: disable schedules, stop the dispatcher gracefully, run `scheduler-reconcile`, and
 verify no matching browser containers/processes remain. Read `DATA/database.json` to identify the
 exact labelled database container; stop/remove only that container and the explicitly prepared fixture
