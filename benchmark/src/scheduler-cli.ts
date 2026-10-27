@@ -5,7 +5,7 @@ import { writeJson } from './storage.js';
 import { SchedulerStore } from './scheduler-store.js';
 import { schedulerRoot, tenant, actionId } from './schedule.js';
 
-import { runScheduler, type SchedulerManifest } from './scheduler.js';
+import { runScheduler, type SchedulerManifest, recoverTenant } from './scheduler.js';
 export async function schedulerCommand(command: string, dataRoot: string, args: string[]) {
   const root = schedulerRoot(dataRoot);
   const setup = command === 'scheduler-setup';
@@ -35,6 +35,11 @@ export async function schedulerCommand(command: string, dataRoot: string, args: 
     }
     else if (command === 'scheduler-run') {
       await runScheduler(store, manifest(), Number(args[0] ?? 100));
+    }
+    else if (command === 'scheduler-recover') {
+      const [t, mode = 'verify'] = args;
+      if (mode !== 'verify' && mode !== 'history' && mode !== 'auth') throw Error('expected-verify-history-or-auth');
+      console.log(JSON.stringify(await recoverTenant(store, t!, mode, manifest())));
     }
     else throw Error('unknown-scheduler-command');
   } finally { await store.close(); }

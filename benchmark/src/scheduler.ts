@@ -156,3 +156,21 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
     lock.stdin.end();
   }
 }
+
+export async function recoverTenant(store: SchedulerStore, value: string, mode: 'verify' | 'history' | 'auth', manifest: SchedulerManifest) {
+  const t = tenant(value), lock = await holdLock(join(store.root, 'locks', 'supervisor.lock'));
+  try {
+    reconcile(store.root);
+    const result = await ownedSession(store.root, t, manifest, Date.now() + 120_000, () => store.healthy(), async () => undefined, async (owner, session) => {
+      if (mode !== 'verify') await session.send({ op: 'control', path: mode === 'history' ? '/api/history' : `/seed/${t}`, data: { locked: false } });
+      const counterFile = join(store.root, 'locks', `${t}.counter.json`);
+      if (!existsSync(counterFile)) throw Error('committed-profile-required');
+      const counter = JSON.parse(readFileSync(counterFile, 'utf8')).counter;
+      await session.send({ op: 'verify', counter, seed: false }); owner.check();
+      return { outcome: 'verified' };
+    });
+    if (result.outcome !== 'verified') throw Error(result.error);
+    await store.resume(t);
+    return result;
+  } finally { lock.stdin.end(); }
+}

@@ -173,6 +173,8 @@ export class SchedulerStore {
       // v10 settlement takes IDs, so fence under a row lock before using it in this transaction.
       const current = (await c.query(`SELECT * FROM ${this.queueSchema}.job WHERE id=$1 AND name=$2 FOR UPDATE`, [job.id, job.name])).rows[0];
       if (!current || current.retry_count !== job.retryCount || (!recovering && current.state !== 'active')) throw Error('queue-ownership-lost');
+      const blocked = result.error?.includes('persistence-or-isolation') ? 'persistence-or-isolation'
+        : /^(reauth-required|history-unavailable|profile-counter-ambiguous)$/.test(result.error ?? '') ? result.error : undefined;
       const delay = !recovering && !obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now) ? retryDelay(job.data, job.retryCount, result.error ?? '', now) : undefined;
       if (delay !== undefined) {
         await c.query(`UPDATE ${this.queueSchema}.job SET retry_delay=$2 WHERE id=$1`, [job.id, delay]);
@@ -184,6 +186,7 @@ export class SchedulerStore {
           first_pending=CASE WHEN latest_due IS NULL THEN NULL ELSE first_pending END WHERE tenant=$1 AND observation=$2`, [job.data.tenant, job.id]);
         else await c.query(`UPDATE ${this.schema}.action SET outcome=$2,result=$3 WHERE job=$1`, [job.id, result.outcome, result]);
       }
+      if (blocked) await c.query(`UPDATE ${this.schema}.schedule SET blocked=$2 WHERE tenant=$1`, [job.data.tenant, blocked]);
       await c.query(`UPDATE ${this.schema}.attempt SET result=$3,ended_at=now() WHERE job=$1 AND delivery=$2`, [job.id, job.retryCount, { ...result, retryInSeconds: delay }]);
     });
   }
@@ -195,6 +198,10 @@ export class SchedulerStore {
   async configure(t: string, enabled: boolean, every?: number) {
     tenant(t); if (every !== undefined) interval(every);
     await this.pool.query(`UPDATE ${this.schema}.schedule SET enabled=$2,revision=revision+1,interval_ms=COALESCE($3,interval_ms) WHERE tenant=$1`, [t, enabled, every]);
+  }
+  async resume(t: string) {
+    tenant(t);
+    await this.pool.query(`UPDATE ${this.schema}.schedule SET blocked=NULL,enabled=true,revision=revision+1,next_due=now() WHERE tenant=$1`, [t]);
   }
   async status() {
     await this.identity();

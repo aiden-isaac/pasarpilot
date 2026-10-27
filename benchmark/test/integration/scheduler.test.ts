@@ -41,5 +41,11 @@ test('durable scheduler coalesces, bounds work, dispatches fairly and fences sta
     const c = (await store.claim())!;
     assert.equal(c.data.tenant, 'seller-c');
     await store.finish(c, { outcome: 'completed' }, now);
+    const blockedAction = (await store.claim())!;
+    await store.finish(blockedAction, { outcome: 'failed', error: 'history-unavailable' });
+    assert.equal((await store.status()).schedules.find(s => s.tenant === blockedAction.name).blocked, 'history-unavailable');
+    const healthy = (await store.claim())!;
+    assert.notEqual(healthy.name, blockedAction.name);
+    await store.finish(healthy, { outcome: 'completed' });
   } finally { await cleanup(); }
 });
