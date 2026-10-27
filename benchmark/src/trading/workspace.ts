@@ -32,4 +32,14 @@ export class Workspace {
   const ranks=table==='claims'?`,count(*) FILTER(WHERE state='backup') OVER(ORDER BY position,id) AS backup_rank`:'';
   return readPage(this.p,`SELECT r.*${ranks} FROM trading.${table} r WHERE seller_id=$1 AND ${column}=$2`,[this.seller,id],JSON.stringify([this.seller,parent,id,table]),input,table==='claims'?'position':table==='messages'||table==='orders'?'time':'id');
  }
+ async select(table:'inventory'|'items',query='',input:PageInput & {listing?:string}={}) {
+  if(!['inventory','items'].includes(table))throw Error('invalid-selector');
+  if(typeof query!=='string'||query.length>100||/[\x00-\x1f]/.test(query))throw Error('invalid-search');
+  query=query.trim();
+  const listing=input.listing??'';
+  if(listing){if(table!=='items')throw Error('invalid-selector-listing');await this.get('listings',listing);}
+  const sql=table==='inventory'?`SELECT v.* FROM trading.inventory v WHERE v.seller_id=$1 AND strpos(lower(v.name||' '||v.printing||' '||v.collector||' '||v.finish||' '||v.condition),lower($2))>0`:
+   `SELECT i.*,v.name,v.printing,v.collector,v.language,v.finish,v.condition,v.unsold,v.reserved FROM trading.items i JOIN trading.inventory v ON(v.seller_id=i.seller_id AND v.id=i.inventory_id) WHERE i.seller_id=$1 AND strpos(lower(v.name||' '||v.printing||' '||v.collector||' '||v.finish||' '||v.condition),lower($2))>0 AND ($3='' OR i.listing_id=$3)`;
+  return readPage(this.p,sql,table==='items'?[this.seller,query,listing]:[this.seller,query],JSON.stringify([this.seller,'select',table,query,listing]),input);
+ }
 }

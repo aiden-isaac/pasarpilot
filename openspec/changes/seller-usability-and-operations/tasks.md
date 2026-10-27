@@ -5,7 +5,7 @@
 - [x] 1.3 Probe runtime-role grants; prevent business/scheduler DDL, migration writes and audit UPDATE/DELETE while preserving required pg-boss queue permissions. Add focused role assertions and verify the provisioning role is absent from normal serving.
 - [x] 1.4 Add validated seller-scoped keyset pages and allowlisted filters to existing workspace/order-history reads (default 25, maximum 100, one continuation row); test complete traversal, filter/cursor failures and colliding/foreign seller IDs.
 - [x] 1.5 Bound detail children, messages, drafts, claims/backups, timelines and shared-instruction snapshots with SQL joins/EXISTS; eliminate full draft-reference arrays and test long histories without changing backup rank or snapshot visibility.
-- [ ] 1.6 Add bounded server-side inventory/item search/selection and late-page association; test that records beyond 200 can be selected, edited and opened directly without loading every collection.
+- [x] 1.6 Add bounded server-side inventory/item search/selection and late-page association; test that records beyond 200 can be selected, edited and opened directly without loading every collection.
 
 ## 2. Organize and style the existing seller workspace
 

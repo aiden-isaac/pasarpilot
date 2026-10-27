@@ -120,3 +120,12 @@ uses seller-qualified EXISTS instead of loading draft/source arrays; historical
 instruction deliveries page by precise timestamp/id. TypeScript/build and all
 31 database tests pass (`task-05.txt`), including 235-row long children/snapshots,
 backup ranks, complete timeline traversal and foreign-parent rejection.
+
+## Task 1.6: late-page selection
+
+Inventory/item selectors use literal case-insensitive server-side metadata search,
+25/100-row pages and optional owned listing scope. Direct scoped lookup and existing
+catalog mutations work independently of list position. Focused database test/build
+pass: traverse 235 matches, search/edit/map/open the final row, reject foreign
+listing association and incompatible cursor/search input. UI selectors are wired
+in the next selected-view task rather than adding a second set of forms.
