@@ -22,4 +22,14 @@ export class Workspace {
   const row=(await this.p.query(`SELECT * FROM trading.${table} WHERE seller_id=$1 AND id=$2`,[this.seller,text(id)])).rows[0];
   if(!row) throw Error('not-found'); return row;
  }
+ async children(parent:'listings'|'items'|'orders'|'conversations',id:string,table:Table,input:PageInput={}) {
+  if(!['listings','items','orders','conversations'].includes(parent)||!tables.includes(table))throw Error('invalid-detail-relation');
+  const relations={listings:{items:'listing_id'},items:{claims:'item_id',orders:'item_id',conversations:'item_id',drafts:'item_id'},
+   orders:{drafts:'order_id',reviews:'order_id'},conversations:{messages:'conversation_id',drafts:'conversation_id',orders:'conversation_id'}};
+  const column=(relations[parent] as Record<string,string>|undefined)?.[table];
+  if(!column)throw Error('invalid-detail-relation');
+  await this.get(parent,id);
+  const ranks=table==='claims'?`,count(*) FILTER(WHERE state='backup') OVER(ORDER BY position,id) AS backup_rank`:'';
+  return readPage(this.p,`SELECT r.*${ranks} FROM trading.${table} r WHERE seller_id=$1 AND ${column}=$2`,[this.seller,id],JSON.stringify([this.seller,parent,id,table]),input,table==='claims'?'position':table==='messages'||table==='orders'?'time':'id');
+ }
 }

@@ -110,3 +110,13 @@ callers to the page result shape; navigation presentation follows in task 2.1.
 TypeScript/build and all 30 trading database tests pass (`task-04.txt`), including
 235 colliding inventory IDs per seller, full filtered order traversal, timestamp
 ties, foreign/incompatible/malformed cursors and invalid filters/page sizes.
+
+## Task 1.5: bounded detail children
+
+Owned parent reads page listing items, item claims/orders/conversations/drafts,
+order drafts/reviews and conversation messages/drafts/orders. Claims use
+(position,id) continuation and SQL backup ranks over the full owned item. Timeline
+uses seller-qualified EXISTS instead of loading draft/source arrays; historical
+instruction deliveries page by precise timestamp/id. TypeScript/build and all
+31 database tests pass (`task-05.txt`), including 235-row long children/snapshots,
+backup ranks, complete timeline traversal and foreign-parent rejection.

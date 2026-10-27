@@ -18,7 +18,7 @@ test('browser-free normalized RM10 sale completes A once and never sells backup 
  const one=await intake(p,b,a.tenant,first);await processStream(p,w.seller,a.source,a.epoch,handle);assert.equal((await w.get('claims',two.id)).state,'backup');assert.equal((await w.get('inventory',t.inv)).reserved,1);
  const v=(await p.query('SELECT instruction_version FROM trading.sellers WHERE id=$1',[w.seller])).rows[0].instruction_version;await instructions(w,v,'DEMO ONLY synthetic account',true);await terms(w,one.id,1,'collection',0);await approve(w,await paymentDraft(w,one.id,2),1);await confirmPayment(w,one.id,2,1000,true);
  await arrange(w,one.id,3,{location:'Synthetic game shop',time:new Date().toISOString()});await fulfil(w,one.id,4,'collected','Seller confirmed actual collection');await complete(w,one.id,5);
- const count=(await timeline(w,one.id)).length;await intake(p,b,a.tenant,first);await processStream(p,w.seller,a.source,a.epoch,handle);await confirmPayment(w,one.id,2,1000,true);await complete(w,one.id,5);assert.equal((await timeline(w,one.id)).length,count);
+ const count=(await timeline(w,one.id)).rows.length;await intake(p,b,a.tenant,first);await processStream(p,w.seller,a.source,a.epoch,handle);await confirmPayment(w,one.id,2,1000,true);await complete(w,one.id,5);assert.equal((await timeline(w,one.id)).rows.length,count);
  assert.equal((await w.get('orders',one.id)).state,'completed');assert.equal((await w.get('claims',two.id)).state,'unfulfilled');assert.equal((await w.get('inventory',t.inv)).unsold,0);assert.equal((await w.get('inventory',t.inv)).reserved,0);
  }finally{await b.stop();await p.end();}
 });
