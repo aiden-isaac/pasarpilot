@@ -38,7 +38,8 @@ export async function allocate(c:Client,s:string,r:ClaimRequest,price?:number) {
   const hold=(await c.query('INSERT INTO trading.reservations(seller_id,id) VALUES($1,$2) RETURNING expires_at',[s,order])).rows[0];
   await wake(c,'expiry',{seller:s,order},hold.expires_at);
  }
- const dependencies={item:item.version,listing:post.version,policy:inv.version,order:order?1:null,source:r.source??null};
+ const src=r.source?(await c.query('SELECT hash FROM trading.inbox WHERE seller_id=$1 AND id=$2',[s,r.source])).rows[0]:null;
+ const dependencies={hash:src?.hash??null,item:item.version,listing:post.version,policy:inv.version,order:order?1:null,source:r.source??null};
  const draft=randomUUID();await c.query('INSERT INTO trading.drafts(seller_id,id,conversation_id,order_id,item_id,source_id,kind,text,dependencies) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[s,draft,r.conversation,order,r.item,r.source??null,state==='primary'?'claim':'backup',response(state==='primary'?'claim':'backup',{quantity:r.quantity}),dependencies]);
  await activity(c,s,state==='primary'?'hold_created':'backup_queued',r.id,1,r.buyer,'',r.source??null);
  await activity(c,s,'response_proposed',draft,1,'rules','',r.source??null);

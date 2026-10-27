@@ -29,7 +29,7 @@
 
 ## 5. Add assisted responses negotiation and payment requests
 
-- [ ] 5.1 Persist versioned response proposals and implement seller approval plus transactional idempotent simulated delivery to buyer conversation records; test changed source/order/listing dependencies, duplicate approval and no browser/live-platform send.
+- [x] 5.1 Persist versioned response proposals and implement seller approval plus transactional idempotent simulated delivery to buyer conversation records; test changed source/order/listing dependencies, duplicate approval and no browser/live-platform send.
 - [ ] 5.2 Add seller-configured negotiation enablement/minimum MYR unit price, deterministic offer proposals and guarded acceptance; test below-floor confidentiality, policy changes, unsupported terms, availability loss and reuse of an existing hold without double allocation.
 - [ ] 5.3 Add seller payment-instruction configuration and explicit sharing approval, instruction snapshots and exact payable totals with agreed fulfilment fees; block unknown postage cost and stale/unapproved instructions, and test that receipt references remain unverified.
 - [ ] 5.4 Complete the seller claim/review/conversation/order workspace with clearly labeled proposed/approved/delivered states, keyboard-operable forms and contextual errors; exercise the core listing-to-reservation-to-approved-payment-request path through Playwright.
