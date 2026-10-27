@@ -9,6 +9,13 @@ test('coalescing skips offline ticks without drifting the future cadence', () =>
   assert.deepEqual(dueTicks(1000, 1000, 10_500), { count: 10, latest: 10_000, next: 11_000 });
   assert.deepEqual(dueTicks(1000, 1000, 1000), { count: 1, latest: 1000, next: 2000 });
 });
+test('round robin continues after each persisted tenant across a restart', () => {
+  let cursor: string | null = null;
+  const turns: string[] = [];
+  for (let i = 0; i < 12; i++) { const chosen: string = roundRobin(cursor)[0]!; turns.push(chosen); cursor = chosen; }
+  assert.deepEqual(turns, Array(4).fill(['seller-a','seller-b','seller-c']).flat());
+  assert.deepEqual(roundRobin('seller-b'), ['seller-c','seller-a','seller-b']);
+});
 test('scheduler rejects unknown tenants, unsafe roots and invalid scalar inputs', () => {
   for (const value of ['seller-d','../seller-a','']) assert.throws(() => tenant(value));
   for (const value of [0,NaN,Infinity,999,86_400_001]) assert.throws(() => interval(value));

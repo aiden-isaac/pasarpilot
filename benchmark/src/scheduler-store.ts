@@ -137,6 +137,24 @@ export class SchedulerStore {
       return (await c.query(`INSERT INTO ${this.schema}.action(tenant,id,job) VALUES($1,$2,$3) RETURNING *`, [t, id, job])).rows[0];
     });
   }
+  async claim(): Promise<Claim | undefined> {
+    return this.transaction(async c => {
+      const identity = (await c.query(`SELECT * FROM ${this.schema}.identity FOR UPDATE`)).rows[0];
+      for (const t of roundRobin(identity.cursor)) {
+        const s = (await c.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1`, [t])).rows[0]!;
+        if (s.blocked || !s.enabled) continue;
+        const [job] = await this.boss.fetch<VisitJob>(t, { includeMetadata: true, batchSize: 1, priority: false, db: transactionDb(c) });
+        await c.query('SELECT 1'); // pg-boss 10 fetch swallows SQL errors; an aborted transaction must still fail closed.
+        if (!job) continue;
+        validateJob(job.data);
+        if (job.id !== job.data.id || job.data.tenant !== t || !['action','observation'].includes(job.data.kind)) throw Error('invalid-persisted-job');
+        await c.query(`UPDATE ${this.schema}.identity SET cursor=$1`, [t]);
+        await c.query(`INSERT INTO ${this.schema}.attempt(job,delivery,tenant,kind,data) VALUES($1,$2,$3,$4,$5)`,
+          [job.id, job.retryCount, t, job.data.kind, job.data]);
+        return job;
+      }
+    });
+  }
   async status() {
     await this.identity();
     const schedules = (await this.pool.query(`SELECT * FROM ${this.schema}.schedule ORDER BY tenant`)).rows;
