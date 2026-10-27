@@ -9,7 +9,9 @@ import { fixtureOrigin, inspect, podman } from './container.js';
 
 process.umask(0o077);
 const [command, dataRoot] = process.argv.slice(2);
-if (command === 'baseline' && dataRoot) {
+if (command?.startsWith('scheduler-') && dataRoot) {
+  await (await import('./scheduler-cli.js')).schedulerCommand(command, dataRoot, process.argv.slice(4));
+} else if (command === 'baseline' && dataRoot) {
   const root = initialise(dataRoot);
   if (minecraftPids().length) throw Error('minecraft-still-running');
   const origin = fixtureOrigin();

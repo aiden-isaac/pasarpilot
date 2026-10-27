@@ -1,0 +1,28 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { holdLock } from './ownership.js';
+import { writeJson } from './storage.js';
+import { SchedulerStore } from './scheduler-store.js';
+import { schedulerRoot, tenant, actionId } from './schedule.js';
+
+export async function schedulerCommand(command: string, dataRoot: string, args: string[]) {
+  const root = schedulerRoot(dataRoot);
+  const setup = command === 'scheduler-setup';
+  const store = await SchedulerStore.open(root, setup, setup ? Number(args[0] ?? 60_000) : 60_000);
+  try {
+    if (setup) {
+      const metadata = { schemaVersion: 1, root, node: process.version, pgBoss: '10.4.2', pg: '8.23.1',
+        postgres: (await store.pool.query('SHOW server_version')).rows[0].server_version, identity: await store.identity() };
+      writeJson(join(root, 'scheduler.json'), metadata);
+      console.log(JSON.stringify(metadata));
+    }
+    else if (command === 'scheduler-status') {
+      console.log(JSON.stringify(await store.status(), null, 2));
+    }
+    else if (command === 'scheduler-action') {
+      const [t, id, revision, deadline] = args;
+      console.log(JSON.stringify(await store.submitAction(t!, id!, Number(revision), Number(deadline))));
+    }
+    else throw Error('unknown-scheduler-command');
+  } finally { await store.close(); }
+}
