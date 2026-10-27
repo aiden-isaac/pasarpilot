@@ -6,10 +6,11 @@ import { initialise, privateDir, profilePath, writeJson } from './storage.js';
 import { defaults } from './config.js';
 
 export type Lease = { schemaVersion: 1; tenant: string; generation: number; attempt: string;
-  container: string; expires: number; cancelled: boolean; state: string; reason?: string };
+  container: string; expires: number; cancelled: boolean; state: string; reason?: string; deadline?: number; operationGuard?: boolean };
 export function readLease(path: string): Lease { return JSON.parse(readFileSync(path, 'utf8')); }
 export function assertLease(actual: Lease, expected: Pick<Lease, 'attempt' | 'generation'>, now = Date.now()): void {
   if (actual.attempt !== expected.attempt || actual.generation !== expected.generation || actual.cancelled || actual.expires <= now) throw Error('ownership-lost');
+  if (actual.deadline !== undefined && (!Number.isFinite(actual.deadline) || actual.deadline <= now)) throw Error('deadline-expired');
 }
 export function assertAutomation(lease: Lease): void {
   if (lease.state === 'interactive') throw Error('interactive-control-exclusive');

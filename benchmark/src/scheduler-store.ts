@@ -163,6 +163,10 @@ export class SchedulerStore {
     const reason = obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now);
     if (reason) throw Error(reason);
   }
+  async attach(job: Claim, owner: { attempt: string; generation: number }) {
+    await this.check(job);
+    await this.pool.query(`UPDATE ${this.schema}.attempt SET owner=$3 WHERE job=$1 AND delivery=$2 AND result IS NULL`, [job.id, job.retryCount, owner]);
+  }
   async finish(job: Claim, result: Outcome, now = Date.now(), recovering = false) {
     return this.transaction(async c => {
       const s = (await c.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1 FOR UPDATE`, [job.data.tenant])).rows[0]!;
