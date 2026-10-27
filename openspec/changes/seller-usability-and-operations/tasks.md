@@ -33,7 +33,7 @@
 
 ## 6. Make the demonstration repeatable through existing trading paths
 
-- [ ] 6.1 Give each synthetic demo run/step stable identities and serialize next-position generation at the shared trusted source boundary used by HTTP and CLI; test concurrent generation and retry after response loss without source collisions or duplicate effects.
+- [x] 6.1 Give each synthetic demo run/step stable identities and serialize next-position generation at the shared trusted source boundary used by HTTP and CLI; test concurrent generation and retry after response loss without source collisions or duplicate effects.
 - [ ] 6.2 Add a guided browser-only sequence over existing inventory/listing and buyer simulation controls, linking to prerequisites and A's order; use one MYR 10.00 unit, B backup and zero-fee collection without auto-verifying payment or fulfilment.
 - [ ] 6.3 Extend the existing end-to-end acceptance to finish onboarding and the guided sale twice, preserving both histories and verifying one stock commitment per run; cover desktop/mobile and separate unpaid expiry/promotion, ambiguous-review and intermediate postage/drop-off cases using existing focused tests.
 

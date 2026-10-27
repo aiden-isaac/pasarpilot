@@ -283,3 +283,15 @@ checks prove initial cadence, hidden pause, one in-flight request, capped backof
 relogin stop and exact editing/focus/selection/scroll preservation under reduced
 motion. The no-JS sale retains manual navigation/refresh. Reviewed mobile
 `appearance/freshness-relogin.png`; summary bodies contain no private text.
+
+## Task 6.1: stable synthetic generation
+
+HTTP/CLI now share trusted-source locking for next-position allocation and inbox
+acceptance. Stable supplied event IDs replay the original position/source time;
+changed content under that ID is quarantined rather than awarded a new effect.
+The form allocates its event identity before submission. CLI `generate` now
+requires a fifth stable-event-ID argument; the operator example is updated.
+All 35 database and nine dashboard tests pass (`task-19-{database,dashboard}.txt`).
+Concurrent actual HTTP/CLI calls using stable run/step IDs get adjacent unique
+positions, one hold, safe acknowledgement-loss replay, retained conflict evidence
+and tenant isolation. Normalized envelope validation/deduplication stays shared.

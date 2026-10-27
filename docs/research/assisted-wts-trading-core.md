@@ -48,11 +48,11 @@ Open `http://127.0.0.1:8787/login` locally or through an SSH tunnel; log in as `
 8. Save a synthetic collection location and ISO meeting time. Record actual collection with a reason/evidence, then **Complete transaction**.
 9. Open the order timeline from transaction history. A is completed, B unfulfilled, and there is one verified sale. Repeated delivery/payment/completion commands do not repeat their effects.
 
-For browser-free operator-generated events, use the displayed item comment ID:
+For browser-free operator-generated events, use the displayed item comment ID. The seller-usability generator now requires a distinct stable event ID for each intended event as its fifth argument; retain and reuse that ID after an uncertain response:
 
 ```bash
-node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-a 'claim'
-node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-b 'claim'
+node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-a 'claim' STABLE_EVENT_A_ID
+node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-b 'claim' STABLE_EVENT_B_ID
 ```
 
 Cancellation/expiry, ambiguity and negotiation scenarios are intentionally separate from the paid sale. Unpaid cancellation releases once and promotes a fillable same-item backup. Other listing comments require explicit promotion. Conditional text such as `claim if NM` creates a review, not an entitlement. Negotiation is disabled until a private minimum is set. A price offer proposes acceptance/countering but reserves nothing before seller approval.

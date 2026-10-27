@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { escape as e,field,form as postForm,recoverForm,hidden,type Mutation,type View } from './server.js';
 import { inventory,listing,item,type Card } from './catalog.js';
 import { sen,integer,myr,quantity } from './values.js';
@@ -9,7 +10,7 @@ import { extend,handle } from './stock.js';
 import { arrange,fulfil,complete } from './fulfilment.js';
 import { history,timeline,sharedInstructions } from './history.js';
 import { queue } from './db.js';
-import { intake,synthetic } from './intake.js';
+import { generate } from './intake.js';
 import { processStream } from './consumer.js';
 import { destinations,views,safeReturn } from './navigation.js';
 import type { Page } from './paging.js';
@@ -52,9 +53,7 @@ export const mutate:Mutation=async(w,path,f)=>{
  }
  if(path==='/synthetic'){
   await w.get('items',get('item'));const mapping=(await w.p.query('SELECT * FROM trading.sources WHERE seller_id=$1',[w.seller])).rows[0];
-  const pos=Number((await w.p.query('SELECT COALESCE(max(position),0)+1 AS n FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3',[w.seller,mapping.source,mapping.epoch])).rows[0].n);
-  const ev={...synthetic({source:mapping.source,epoch:mapping.epoch},pos,get('item'),get('buyer'),get('text')),kind:get('kind') as 'reply'};
-  await intake(w.p,queue(w.p),mapping.tenant,ev);await processStream(w.p,w.seller,mapping.source,mapping.epoch,handle);return;
+  await generate(w.p,queue(w.p),mapping.tenant,{event:get('event'),item:get('item'),actor:get('buyer'),message:get('text'),kind:get('kind') as 'reply'});await processStream(w.p,w.seller,mapping.source,mapping.epoch,handle);return;
  }
  throw Error('not-found');
 };
@@ -108,7 +107,7 @@ export const view:View=async(w,csrf,url,feedback)=>{
   const i=await w.get('items',selected),card=await w.get('inventory',i.inventory_id),post=await w.get('listings',i.listing_id),child=param('child')||'claims';
   if(!['claims','orders','conversations'].includes(child))throw Error('invalid-detail');
   const page=await w.children('items',selected,child as 'claims',pageInput('childCursor'));
-  content=`<h2>${e(cardLabel(card))}</h2><p>${link('inventory',card.id,'Inventory')} · ${link('listings',post.id,post.title)}</p><p>Offered ${i.offered} · held/sold ${i.allocated} · available ${Math.min(card.unsold-card.reserved,i.offered-i.allocated)} · ${myr(i.price)} · ${i.open?'Open':'Closed'}</p>${form('/item',csrf,version(i)+hidden('listing_id',post.id)+hidden('inventory_id',i.inventory_id)+field('offered','Offered quantity',i.offered,'number')+select('open','Status',options(['true','false']),String(i.open)),'Save item')}${tabs(['claims','orders','conversations'],child)}${empty(page.rows,'No activity for this item.')}${page.rows.map(r=>child==='orders'?orderRow(r):child==='conversations'?`<p>${link('conversations',r.id,r.buyer)}</p>`:`<article><h3>${e(r.buyer)} · ${e(label(r.state))}</h3><p>${r.quantity} unit(s) · source position ${r.position}${r.state==='backup'?` · backup position ${e(r.backup_rank)} · no reservation`:''}</p>${r.state==='primary'||r.state==='fulfilled'?link('orders',r.id,'Open order'):''}${r.state==='backup'?form('/promote',csrf,version(r)+field('reason','Promotion reason'),'Promote backup'):''}</article>`).join('')}${pages(page,'childCursor')}<details><summary>Simulate buyer activity</summary><p>Synthetic only. Exact grammar: claim [quantity], backup [quantity], or offer RM9.00.</p>${form('/synthetic',csrf,hidden('item',selected)+select('buyer','Synthetic buyer',options(['buyer-a','buyer-b']))+select('kind','Event kind',options(['reply','message','offer','payment_evidence']))+field('text','Buyer message','claim'),'Generate synthetic event')}</details>`;
+  content=`<h2>${e(cardLabel(card))}</h2><p>${link('inventory',card.id,'Inventory')} · ${link('listings',post.id,post.title)}</p><p>Offered ${i.offered} · held/sold ${i.allocated} · available ${Math.min(card.unsold-card.reserved,i.offered-i.allocated)} · ${myr(i.price)} · ${i.open?'Open':'Closed'}</p>${form('/item',csrf,version(i)+hidden('listing_id',post.id)+hidden('inventory_id',i.inventory_id)+field('offered','Offered quantity',i.offered,'number')+select('open','Status',options(['true','false']),String(i.open)),'Save item')}${tabs(['claims','orders','conversations'],child)}${empty(page.rows,'No activity for this item.')}${page.rows.map(r=>child==='orders'?orderRow(r):child==='conversations'?`<p>${link('conversations',r.id,r.buyer)}</p>`:`<article><h3>${e(r.buyer)} · ${e(label(r.state))}</h3><p>${r.quantity} unit(s) · source position ${r.position}${r.state==='backup'?` · backup position ${e(r.backup_rank)} · no reservation`:''}</p>${r.state==='primary'||r.state==='fulfilled'?link('orders',r.id,'Open order'):''}${r.state==='backup'?form('/promote',csrf,version(r)+field('reason','Promotion reason'),'Promote backup'):''}</article>`).join('')}${pages(page,'childCursor')}<details><summary>Simulate buyer activity</summary><p>Synthetic only. Exact grammar: claim [quantity], backup [quantity], or offer RM9.00.</p>${form('/synthetic',csrf,hidden('event',randomUUID())+hidden('item',selected)+select('buyer','Synthetic buyer',options(['buyer-a','buyer-b']))+select('kind','Event kind',options(['reply','message','offer','payment_evidence']))+field('text','Buyer message','claim'),'Generate synthetic event')}</details>`;
  }
  if(section==='conversations'){
   content='<h2>Conversations</h2>';
