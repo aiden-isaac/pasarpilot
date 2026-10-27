@@ -3,13 +3,24 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "check": "tsc --noEmit",
     "test": "npm run build && node --test dist/test/*.test.js",
+    "test:database": "npm run build && node --test --test-concurrency=1 dist/test/integration/*.test.js",
     "benchmark": "node dist/src/cli.js"
   },
-  "dependencies": { "playwright": "1.64.1" },
-  "devDependencies": { "@types/node": "22.20.5", "typescript": "5.9.3" }
+  "dependencies": {
+    "pg": "8.23.1",
+    "pg-boss": "10.4.2",
+    "playwright": "1.64.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.20.0",
+    "typescript": "5.9.3"
+  }
 }
