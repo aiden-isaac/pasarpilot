@@ -99,3 +99,21 @@ The survivor case required the expected forced kill after the 15-second graceful
 took 17.9 seconds overall. Cleanup preceded replacement ownership. The successful fault dataset
 has no unsettled attempts or queued jobs; its remaining uncertain action is explicitly recorded.
 Prior failed fault data and deliberately interrupted attempts remain retained separately.
+
+## Evidence, cleanup and handoff
+
+Raw data remains owner-only on Jarlaxle under the selected scheduler data root, outside Git. It
+includes database volume/password, clean/fault profiles and schemas, ownership/attempt records,
+ledger, plans/results, clean aggregate, pre/warmed/post baselines and fault reports. The clean source
+is `scheduler-1793109914007.json`; the successful fault dataset is `faults-1793110641424`. Measured
+workspace and final source/test snapshots have retained archives and SHA-256 sidecars. The original
+baseline's Git revision was unrecorded; exact working-tree snapshots provide its provenance.
+
+Cleanup removes only the selected database container, fixture and empty labelled private network
+after verifying no browser descendants remain. Database/profile/evidence directories are retained.
+Minecraft was already stopped and remains stopped; no world data, configuration or unrelated service
+was changed. Neither OpenSpec change is archived automatically.
+
+The [runbook](../../benchmark/README.md#durable-single-slot-fixture-scheduler) covers setup, finite runs,
+status, cancellation, session/action reconciliation, rollback and separate unit/database/live checks.
+A production proposal still needs an authorised platform path and evidence beyond this fixture.

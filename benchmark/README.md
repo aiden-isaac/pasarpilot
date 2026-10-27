@@ -194,3 +194,13 @@ allowance without fresh calibration. A warmed full-stack baseline retains the ho
 conservative 1.5 GiB future-service reserve. Separate service samples check database cgroup memory
 plus scheduler RSS against a further 1.5 GiB planning envelope; this sum is deliberately conservative.
 Unsafe admission defers without taking a queue claim; pressure/accounting failures stop execution.
+
+Rollback/cleanup: disable schedules, stop the dispatcher gracefully, run `scheduler-reconcile`, and
+verify no matching browser containers/processes remain. Read `DATA/database.json` to identify the
+exact labelled database container; stop/remove only that container and the explicitly prepared fixture
+and network after inspection. Retain the database directory/password, profiles, attempts, ledger and
+reports for review. Never run broad pruning, drop the scheduler schema as recovery, or restart Minecraft
+automatically. Restarting the fixture invalidates its in-memory sessions/action evidence; use a new
+explicitly prepared dataset for a new experiment.
+
+See [scheduler evidence and limitations](../docs/research/bounded-fixture-scheduling.md).
