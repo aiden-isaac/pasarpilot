@@ -8,7 +8,7 @@
 ## 2. Implement bounded scheduling and fair dispatch
 
 - [x] 2.1 Implement atomic due-job creation and schedule advancement, one outstanding observation per tenant and latest-tick coalescing across active work/restarts; retain original pending age and coalesced counts.
-- [ ] 2.2 Enforce one nonterminal action per tenant, including uncertain outcomes, the six-job dataset bound, explicit overload rejections and seven-day terminal queue retention; verify bounds with real database transactions.
+- [x] 2.2 Enforce one nonterminal action per tenant, including uncertain outcomes, the six-job dataset bound, explicit overload rejections and seven-day terminal queue retention; verify bounds with real database transactions.
 - [ ] 2.3 Add manual single-job fetches over three tenant queues with a durable sorted round-robin cursor and oldest-job/ID tie-breaker; test continuous eligibility, noisy tenants, actions, delayed retries and restart fairness using a fake clock/executor.
 - [ ] 2.4 Implement schedule revision/disablement/cancellation checks, coalesced observation deadlines, explicit action deadlines, 120-second work/40-second cleanup bounds, queue expiry of at least 180 seconds and transient observation retry limits of two with 30/60-second delays; test expiry and exhaustion without browser launches.
 
