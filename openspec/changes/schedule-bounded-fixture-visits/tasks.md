@@ -1,7 +1,7 @@
 ## 1. Establish durable queue compatibility and storage
 
 - [x] 1.1 Pin PostgreSQL, pg-boss and the required database client to a compatible Node runtime; add explicit private/capped database setup and an opt-in real-database test command without changing default browser-free checks.
-- [ ] 1.2 Prove pg-boss transactional enqueue/rollback, manual fetch/attempt-aware settlement, duplicate suppression and claim expiry against the pinned release; record the supported APIs and versions.
+- [x] 1.2 Prove pg-boss transactional enqueue/rollback, manual fetch/attempt-aware settlement, duplicate suppression and claim expiry against the pinned release; record the supported APIs and versions.
 - [ ] 1.3 Add a minimal versioned scheduler schema for dataset identity, schedules/revisions, fair cursor, attempt receipts, tenant/action outcomes and consumer results; reject incompatible schemas/root/host identity without resetting data.
 - [ ] 1.4 Add validated fixture scheduler setup/status/submission commands using existing CLI conventions, with owner-only data outside Git, primary-tenant restrictions, duplicate action-ID lookup and tests for invalid inputs/path escapes.
 
