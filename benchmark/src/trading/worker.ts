@@ -2,10 +2,12 @@ import type pg from 'pg';
 import { queue } from './db.js';
 import { processStream } from './consumer.js';
 import { handle,sweep } from './stock.js';
+import { importHandoffs } from './capture.js';
 import { Workspace } from './workspace.js';
 export async function worker(p:pg.Pool) {
  const boss=queue(p);await boss.start();let busy=false;
  const tick=async()=>{if(busy)return;busy=true;try{
+  if(process.env.TRADING_CAPTURE_ROOT)await importHandoffs(p,boss,process.env.TRADING_CAPTURE_ROOT);
   const sources=(await p.query('SELECT * FROM trading.sources')).rows;
   for(const s of sources){await sweep(new Workspace(p,s.seller_id));await processStream(p,s.seller_id,s.source,s.epoch,handle);}
   for(const name of ['inbox','expiry']) {const jobs=await boss.fetch(name,{batchSize:100});for(const j of jobs) await boss.complete(name,j.id);}

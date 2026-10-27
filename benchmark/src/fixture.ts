@@ -1,12 +1,15 @@
 import { createServer, type Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { envelope,type Envelope } from './trading/envelope.js';
 import { fileURLToPath } from 'node:url';
 
 export const tenants = ['seller-a', 'seller-b', 'seller-c', 'seller-d'] as const;
 export function validTenant(value: string): boolean { return tenants.includes(value as typeof tenants[number]); }
 type State = { tenant: string; revision: number; locked: boolean; actions: Map<string, number> };
 
-export function fixture(): Server {
+export function fixture(trading:Record<string,Envelope[]>={}): Server {
+  for(const [tenant,events] of Object.entries(trading)) {if(!validTenant(tenant)||events.length>50)throw Error('invalid-fixture-trading-config');events.forEach(envelope);}
   const sessions = new Map<string, State>();
   return createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -62,6 +65,7 @@ export function fixture(): Server {
         state.actions.set(input.id, ++state.revision);
         send(200, { revision: state.revision }); return;
       }
+      if(path==='/api/wts'&&req.method==='GET'){send(200,{tenant:state.tenant,events:trading[state.tenant]??[]});return;}
       if (/^\/target\/[1-4]$/.test(path) && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end('<!doctype html><title>Synthetic trading fixture</title><main><h1>Controlled listing</h1><ol>' +
@@ -101,6 +105,6 @@ export function fixture(): Server {
   });
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const server = fixture().listen(8080, '0.0.0.0');
+  const server = fixture(process.env.WTS_FIXTURE_FILE?JSON.parse(readFileSync(process.env.WTS_FIXTURE_FILE,'utf8')):{}).listen(8080, '0.0.0.0');
   process.on('SIGTERM', () => server.close());
 }

@@ -13,10 +13,14 @@ fi
 if podman container exists "$container"; then
   podman inspect "$container" | python3 -c 'import json,sys; x=json.load(sys.stdin)[0]; assert x["Config"]["Labels"].get("io.pasarpilot.benchmark")=="true"; assert x["State"]["Running"]; assert not x["HostConfig"].get("PortBindings")'
 else
+  if [ -n "${WTS_FIXTURE_FILE:-}" ]; then
+    test -f "$WTS_FIXTURE_FILE"
+    set -- -v "$WTS_FIXTURE_FILE:/run/wts-fixture.json:ro" -e WTS_FIXTURE_FILE=/run/wts-fixture.json
+  else set --; fi
   podman run --http-proxy=false -d --name "$container" --label "$label=true" --network "$network" \
     --userns keep-id --user "$(id -u):$(id -g)" --cap-drop all \
     --memory=256m --memory-swap=256m --cpus=1 --read-only \
-    --tmpfs /tmp:rw,nosuid,nodev,size=32m "$image" dist/src/fixture.js
+    --tmpfs /tmp:rw,nosuid,nodev,size=32m "$@" "$image" dist/src/fixture.js
 fi
 test -z "$(podman port "$container")"
 podman inspect "$container" | python3 -c 'import json,sys; x=json.load(sys.stdin)[0]; print("http://"+x["NetworkSettings"]["Networks"]["pasarpilot-benchmark"]["IPAddress"]+":8080")'

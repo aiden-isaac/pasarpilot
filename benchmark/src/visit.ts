@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { Ownership } from './ownership.js';
 import { Session } from './runtime.js';
 import { writeJson } from './storage.js';
+import { flushCapture } from './trading/capture.js';
 import { appendObservation } from './events.js';
 import { podman } from './container.js';
 
@@ -14,9 +15,11 @@ export async function inspectVisit(owner: Ownership, session: Session, check = a
   if (!Number.isSafeInteger(counter) || counter < 0) throw Error('invalid-profile-counter');
   await check();
   if (seed) writeJson(path, { counter: 0, seedAttempted: true });
-  const reply = await session.send({ op: 'visit', counter, seed });
+  const capture=existsSync(join(owner.root,'trading-capture.json'))&&JSON.parse(readFileSync(join(owner.root,'trading-capture.json'),'utf8')).enabled===true;
+  const reply = await session.send({ op: 'visit', counter, seed, ...(capture?{captureTrading:true}:{}) });
   const flushStart = performance.now();
   await check();
+  if(capture)flushCapture(owner,reply.tradingEvents);
   const observation = appendObservation(owner, Number(reply.counter), Number(reply.events));
   writeJson(path, { counter: reply.counter, seedAttempted: true });
   return { reply, observation, flushMs: performance.now() - flushStart };

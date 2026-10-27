@@ -1,3 +1,4 @@
+import { envelope } from './trading/envelope.js';
 import { chromium, type BrowserContext } from 'playwright';
 import { createInterface } from 'node:readline';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -118,7 +119,9 @@ try {
         events += count;
       }
       await checkpoint();
-      console.log(JSON.stringify({ id: command.id, tenant: expected.tenant, counter,
+      let tradingEvents:unknown;
+      if(command.captureTrading===true){await checkpoint();const captured=await context.request.get(`${origin}/api/wts`);if(captured.status()!==200)throw Error('trading-capture-failed');const payload=await captured.json();if(payload.tenant!==expected.tenant||!Array.isArray(payload.events)||payload.events.length>50)throw Error('invalid-trading-capture');tradingEvents=payload.events.map(envelope);await checkpoint();}
+      console.log(JSON.stringify({ id: command.id, tenant: expected.tenant, counter, ...(tradingEvents?{tradingEvents}:{}),
         revision: state.revision, events, restorationMs, inspectionMs: performance.now() - inspectStart }));
     } catch (error) {
       console.log(JSON.stringify({ id: command.id, error: error instanceof Error ? error.message : 'worker-failed' }));

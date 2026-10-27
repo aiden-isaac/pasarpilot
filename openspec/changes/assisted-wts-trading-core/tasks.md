@@ -42,7 +42,7 @@
 
 ## 7. Prove the smallest useful demonstration and preserve infrastructure
 
-- [ ] 7.1 Add opt-in typed WTS event capture to the controlled fixture/worker while preserving the existing aggregate ledger and default counting workload; flush an attempt sidecar and import only verified-dead/released handoffs into the same trading inbox, with capture/import/acknowledgement crash-replay tests.
+- [x] 7.1 Add opt-in typed WTS event capture to the controlled fixture/worker while preserving the existing aggregate ledger and default counting workload; flush an attempt sidecar and import only verified-dead/released handoffs into the same trading inbox, with capture/import/acknowledgement crash-replay tests.
 - [ ] 7.2 Demonstrate the full authenticated one-unit MYR 10.00 sale: create listing, A claims/reserves, B becomes backup, seller approves simulated payment instructions, explicitly verifies payment, records collection and completes A's order with one auditable sale and no oversell.
 - [ ] 7.3 Add separate dashboard/database scenarios for unpaid cancellation, hold expiry and backup promotion, manual ambiguity resolution, negotiation limits, concurrent claims, cross-seller access, duplicate events/approvals and restart; prove the same domain decisions with no Chromium or OpenRouter dependency.
 - [ ] 7.4 Run one existing single-slot browser-backed capture-to-trade demonstration after a fresh combined application/database/worker/scheduler baseline and unchanged admission/ownership gates; obtain fresh owner approval only if stopping a running Minecraft service is necessary, preserve partial failures and perform scoped verified cleanup.
