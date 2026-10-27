@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation in progress. No browser benchmark result exists yet. Measurements below are read-only host preparation evidence, not assumed browser capacity.
+Implementation in progress. Arm A has completed; rotation and final reclamation/capacity gates remain pending. Host and fixture results below are measurements, not Facebook capacity.
 
 ## Pre-stop baseline
 
@@ -55,3 +55,17 @@ Crash durability is deliberately limited to previously flushed state. An earlier
 The six-visit instrumented pilot completed across all three primary synthetic profiles. The measured whole-attempt cgroup peak was 384,602,112 bytes (366.8 MiB), yielding a minimum 125%-headroom allowance rounded to 512 MiB. Both primary arms will retain the same conservative 2 GiB hard cap to avoid biasing the continuous control through an aggressively reduced cap. Optional concurrency will be recalibrated from completed primary-arm peaks. Final resource counters are captured after Chromium closes but before the container exits, and the host independently verifies termination.
 
 The primary comparison declares a five-second start-to-start cadence, with overruns recorded. This accelerates the controlled lifecycle experiment; it does not simulate Facebook traffic or establish production monitoring latency. The five-minute continuous-browser idle and post-shutdown observation windows remain unchanged.
+
+## Primary arm A — continuous control
+
+Run `continuous-1793085277671`, source `fd98838`, immutable image `499bbd2a8b04cb208b51fd584108894c000b4424a604c73780e5be3ce38fa34e`. All 100 planned visits succeeded on their first attempt; zero retries, failures or excluded warm-ups. Four targets and 400 synthetic items per visit, five-second cadence, one resident profile, then five minutes idle. Total wall time: 795.8 seconds.
+
+- Whole-attempt cgroup peak: **418.45 MiB**, with a 2 GiB hard cap; no OOM/max events.
+- Cgroup memory median/p95: 355.21/400.09 MiB; five-minute idle median/p95: 345.44/377.42 MiB.
+- Per-inspection occupied time median/p95/max: 307/349/1,851 ms. This excludes retained idle occupancy and final shutdown; it is not the service cost of rotating processes.
+- One browser launch-to-ready: 718 ms. Authenticated fixture/storage readiness median/p95: 72/77 ms; subsequent three-target inspection median/p95: 227/256 ms.
+- CPU: 76.26 core-seconds; throttled time: 2.71 seconds, including idle and shutdown. Host swap-in/out: zero pages; maximum memory PSI full avg10: zero.
+- Sampled memory-time: approximately 284,554 MiB-seconds across 794.46 observed seconds, including the additional idle segment. This is trapezoidal sample integration, not exact physical-memory accounting.
+- Profile allocated bytes increased from 7,352,320 to 12,025,856 across the three existing pilot profiles.
+
+The host independently verified container/process termination before profile release. A five-minute post-cleanup sample is running before a fresh matched baseline and arm B. Process RSS and PSS are diagnostic views (median summed RSS 1,211.61 MiB; summed PSS 588.64 MiB), not values to add to cgroup memory: shared image/library pages can be charged to other cgroups. No inaccessible process samples occurred.
