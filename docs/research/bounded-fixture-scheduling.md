@@ -100,6 +100,13 @@ took 17.9 seconds overall. Cleanup preceded replacement ownership. The successfu
 has no unsettled attempts or queued jobs; its remaining uncertain action is explicitly recorded.
 Prior failed fault data and deliberately interrupted attempts remain retained separately.
 
+All 19 browser-free unit tests and three real PostgreSQL integration tests pass locally and on the
+prepared host. They cover atomic enqueue rollback, restart/fair cursor, overload/deduplication,
+30/60-second retry bounds/exhaustion, expired-claim fencing, deadline skips, consumer transaction
+rollback/replay and schema identity. A final regression checks that Playwright-wrapped persistence
+errors block their tenant while another healthy tenant continues, preserving raw diagnostics.
+TypeScript and strict OpenSpec validation pass.
+
 ## Limits and retained preflight failures
 
 - Restarting the fixture invalidates sessions/action history. Podman also changed its private IP in
