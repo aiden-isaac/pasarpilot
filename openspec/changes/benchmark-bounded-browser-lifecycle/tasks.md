@@ -30,7 +30,7 @@
 
 - [x] 5.1 Run continuous-browser arm A for at least 100 completed fixture visits when safe, retaining planned/first-attempt/retry counts, matched workload/cadence and the five-minute idle measurement.
 - [x] 5.2 Verify A's full cleanup and capture a fresh comparable baseline; run fresh-process rotation arm B for at least 100 completed visits, at least 33 per profile, without reseeding, excluding only declared warm-ups and reporting every failed attempt.
-- [ ] 5.3 Separately perform at least five injected crash/restarts plus the declared ownership, cancellation, expiry/history and uncertain-action cases; verify committed state and safe recovery without hiding faults in clean-visit denominators.
+- [x] 5.3 Separately perform at least five injected crash/restarts plus the declared ownership, cancellation, expiry/history and uncertain-action cases; verify committed state and safe recovery without hiding faults in clean-visit denominators.
 - [ ] 5.4 Capture five-minute settled cleanup samples; quantify residual anonymous memory, available-memory drift, reclaimed processes, profile growth and integrated memory-time. Stop/report incomplete evidence if safety or practicality prevents completion.
 
 ## 6. Investigate optional modes only when admitted

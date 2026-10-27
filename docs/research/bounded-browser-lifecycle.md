@@ -84,3 +84,9 @@ Run `rotation-1793086469923` used the same `fd98838` source/image, four-target w
 - Three transient process-read races occurred during teardown; whole-cgroup kernel peak/CPU accounting remained available for every attempt. RSS/PSS diagnostics are not substituted for that accounting.
 
 The raw sampled memory integral covers 126.15 seconds between live cgroup samples and is approximately 26,357 MiB-seconds. Startup/teardown sampling gaps must be bounded and disclosed before comparison; it is not a complete 497-second time integral. The final five-minute settled sample is pending.
+
+## Separate final recovery suite
+
+All **16 cases passed** in the post-primary suite (`faults-1793087304794`), including five injected attempt crashes and restoration after the fifth crash. This separate denominator does not alter either primary arm's 100/100 first-attempt result. History/authentication failure now explicitly closes capacity, records `reauth-required`, and resumes only through a separate explicit fixture-recovery session. Duplicate-profile/expired-owner rejection, cancellation, stale/uncertain actions and supervisor fencing also passed.
+
+A deliberately suspended worker could not answer graceful close. The supervisor hit the 15-second close deadline, performed bounded container termination, verified absence, then reopened the committed profile in the next case. Container stop is asynchronous so host pressure checks and heartbeat renewal continue while waiting. Forced-cleanup reason and elapsed case time are retained in the protected aggregate fault record. This tests a frozen worker in addition to abrupt crashes; it does not guarantee durability of unfinished browser writes.

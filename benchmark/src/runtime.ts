@@ -1,4 +1,5 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, execFile, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createInterface } from 'node:readline';
 import { appendFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -28,6 +29,8 @@ export class Session {
   readonly child: ChildProcessWithoutNullStreams;
   readonly ready: Promise<Reply>;
   cgroup?: string;
+  forcedCleanup = false;
+  shutdownFailure?: string;
   finalResources?: ReturnType<typeof sampleAttempt>;
   private stopping?: Promise<boolean>;
   constructor(readonly owner: Ownership, capBytes: number, origin: string, headed = false) {
@@ -96,14 +99,14 @@ export class Session {
   private async stopOnce(crash: boolean): Promise<boolean> {
     const name = this.owner.lease.container;
     if (!inspect(name).State.Running) return terminated(name, this.owner.root, this.cgroup);
-    if (crash) podman(['kill', '--signal', 'KILL', name]);
+    if (crash) { this.forcedCleanup = true; podman(['kill', '--signal', 'KILL', name]); }
     else {
       try { await Promise.race([
         this.send({ op: 'close' }, true).then(reply => { this.finalResources = reply.resources as ReturnType<typeof sampleAttempt>; }),
         new Promise((_, reject) => setTimeout(() => reject(Error('shutdown-timeout')), defaults.shutdownMs).unref()),
       ]); }
-      catch { /* Container stop below is the bounded cleanup fallback. */ }
-      if (inspect(name).State.Running) podman(['stop', '--time', '15', name]);
+      catch (e) { this.forcedCleanup = true; this.shutdownFailure = (e as Error).message; }
+      if (inspect(name).State.Running) await promisify(execFile)('podman', ['stop', '--time', '15', name], { timeout: 20_000, maxBuffer: 1024 * 1024 });
     }
     return terminated(name, this.owner.root, this.cgroup);
   }

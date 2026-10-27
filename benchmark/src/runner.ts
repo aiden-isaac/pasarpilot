@@ -106,7 +106,12 @@ export async function run(root: string, mode: 'pilot' | 'continuous' | 'rotation
       }
     }
     if (mode === 'continuous') await delay(300_000);
-  } catch (e) { failure ??= e instanceof Error ? e : Error('run-failed'); }
+  } catch (e) {
+    failure ??= e instanceof Error ? e : Error('run-failed');
+    if (owner && !owner.lease.cancelled) {
+      try { owner.cancel(failure.message); } catch { /* A fenced attempt remains unavailable until reconciliation. */ }
+    }
+  }
   finally {
     try { await stop(); } catch (e) { failure ??= e as Error; }
     clearInterval(collector); stopHeartbeat?.();
