@@ -7,6 +7,7 @@ import { policy } from './negotiation.js';
 import { resolve,cancel,manualPromote } from './reviews.js';
 import { extend,handle } from './stock.js';
 import { arrange,fulfil,complete } from './fulfilment.js';
+import { history,timeline,sharedInstructions } from './history.js';
 import { queue } from './db.js';
 import { intake,synthetic } from './intake.js';
 import { processStream } from './consumer.js';
@@ -47,14 +48,18 @@ export const mutate:Mutation=async(w,path,f)=>{
  }
  throw Error('not-found');
 };
-export const view:View=async(w,csrf)=>{
+export const view:View=async(w,csrf,url)=>{
  const [cards,posts,items,claims,orders,holds,conversations,messages,drafts,reviews]=await Promise.all([w.rows('inventory'),w.rows('listings'),w.rows('items'),w.rows('claims'),w.rows('orders'),w.rows('reservations'),w.rows('conversations'),w.rows('messages'),w.rows('drafts'),w.rows('reviews')]);
  const seller=(await w.p.query('SELECT login,instructions,instructions_approved,instruction_version FROM trading.sellers WHERE id=$1',[w.seller])).rows[0];
  const sources=(await w.p.query('SELECT id,envelope,result FROM trading.inbox WHERE seller_id=$1 ORDER BY received_at DESC LIMIT 200',[w.seller])).rows;
+ const transactions=await history(w,url.searchParams.get('state')??'',url.searchParams.get('buyer')??'');
+ const selected=url.searchParams.get('order');
+ let detail='';if(selected){const events=await timeline(w,selected),sent=await sharedInstructions(w,selected);detail=`<h2>Order activity timeline</h2><ol>${events.map(a=>`<li>${e(a.created_at)} · ${e(a.actor)} · ${e(a.action)} · record ${e(a.record_id)} version ${a.version} · source ${e(a.source_id)} · ${e(a.reason)}</li>`).join('')}</ol><h3>Shared instruction snapshots</h3>${sent.map(d=>`<details><summary>Simulated payment request ${e(d.id)} · ${e(d.created_at)}</summary><pre>${e(JSON.stringify(d.instructions,null,2))}</pre></details>`).join('')}`;}
+ const historyHtml=`<h2 id="history">Transaction history</h2><form method="get"><label>Order state <select name="state"><option value="">All states</option>${options(['awaiting_payment','paid','completed','cancelled','expired']).map(s=>`<option>${s.id}</option>`).join('')}</select></label><label>Buyer actor <input name="buyer"></label><button>Filter history</button></form><table><caption>Up to 200 synthetic transactions</caption><thead><tr><th>Buyer</th><th>Order state</th><th>Payment</th><th>Fulfilment</th><th>Total</th><th>History</th></tr></thead><tbody>${transactions.map(o=>`<tr><td>${e(o.buyer)}</td><td>${e(o.state)}</td><td>${e(o.payment)}</td><td>${e(o.fulfilment)}</td><td>${o.total===null?'Unagreed':myr(o.total)}</td><td><a href="/?order=${encodeURIComponent(o.id)}#history">Timeline ${e(o.id)}</a></td></tr>`).join('')}</tbody></table>${detail}`;
  const itemChoices=items.map(i=>({id:i.id,label:`${cards.find(c=>c.id===i.inventory_id)?.name} · ${i.id}`}));
  const cardInputs=(r:Record<string,unknown>)=>cardFields.map(k=>k==='finish'||k==='condition'?select(k,k,options(k==='finish'?['nonfoil','foil','etched','other']:['NM','LP','MP','HP','DMG']),String(r[k]??(k==='finish'?'nonfoil':'NM'))):field(k,k,r[k]??(k==='language'?'English':''))).join('')+field('unsold','Unsold quantity',r.unsold??1,'number')+field('price','MYR asking price',r.price===undefined?'10.00':myr(Number(r.price)).slice(2));
  const draftHtml=(d:Record<string,any>)=>`<article id="draft-${e(d.id)}"><h4>${e(d.kind)} · ${d.state==='delivered'?'Approved · Delivered to fixture':e(d.state)}</h4><p>${e(d.text)}</p>${d.state==='proposed'?form('/approve',csrf,version(d),'Approve simulated delivery'):''}</article>`;
- return `<p>Seller: ${e(seller.login)}. Synthetic events only. All outbound replies are simulated.</p><nav><a href="#inventory">Inventory</a> · <a href="#listings">WTS listings</a> · <a href="#reviews">Reviews</a> · <a href="#orders">Orders</a> · <a href="#conversations">Conversations</a></nav>
+ return historyHtml+`<p>Seller: ${e(seller.login)}. Synthetic events only. All outbound replies are simulated.</p><nav><a href="#inventory">Inventory</a> · <a href="#listings">WTS listings</a> · <a href="#reviews">Reviews</a> · <a href="#orders">Orders</a> · <a href="#conversations">Conversations</a></nav>
  <h2 id="inventory">1. Inventory</h2><p>One order covers one variant. Available = unsold − reserved. Prices are MYR.</p>${form('/inventory',csrf,cardInputs({}),'Add inventory')}
  ${cards.map(c=>`<article id="inventory-${e(c.id)}"><h3>${e(c.name)} · ${e(c.printing)} ${e(c.collector)} · ${e(c.finish)} / ${e(c.condition)}</h3><p>Unsold ${c.unsold}; reserved ${c.reserved}; available ${c.unsold-c.reserved}</p>${form('/inventory',csrf,version(c)+cardInputs(c),'Save inventory')}${form('/policy',csrf,version(c)+`<label>Private minimum MYR (blank disables negotiation) <input name="minimum" value="${c.minimum===null?'':myr(c.minimum).slice(2)}"></label>`,'Save negotiation policy')}</article>`).join('')}
  <h2 id="listings">2. Synthetic WTS posts and item comments</h2>${form('/listing',csrf,field('title','Post title'),'Create WTS post')}
