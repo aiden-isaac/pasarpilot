@@ -7,13 +7,13 @@ import { pool } from '../../../src/trading/db.js';
 import { hashPassword } from '../../../src/trading/password.js';
 import { listen } from '../../../src/trading/server.js';
 import { mutate,view } from '../../../src/trading/dashboard.js';
-test('authenticated seller creates variant and post, reserves a claim and approves a payment request',async()=>{
+test('authenticated seller creates variant and post, completes one RM10 sale with a competing backup and one stock commitment',{timeout:60000},async()=>{
  const [a]=await accounts(),p=pool(),password=randomBytes(24).toString('hex');
  await p.query('DELETE FROM trading.login_limits');await p.query('UPDATE trading.sellers SET password_hash=$2 WHERE id=$1',[a.seller_id,await hashPassword(password)]);
  const app=await listen(p,0,mutate,view);const addr=app.address();assert.ok(addr&&typeof addr!=='string');
  let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
  try{browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
- const page=await browser.newPage();await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
+ const page=await browser.newPage();page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
  const name=`Synthetic Bolt ${id()}`,title=`WTS ${id()}`;
  const add=page.locator('form[action="/inventory"]').filter({has:page.getByRole('button',{name:'Add inventory',exact:true})});
  await add.getByLabel('name',{exact:true}).fill(name);await add.getByLabel('printing',{exact:true}).fill('SYN');await add.getByLabel('collector',{exact:true}).fill('1');await add.getByRole('button').click();
@@ -24,11 +24,21 @@ test('authenticated seller creates variant and post, reserves a claim and approv
  const it=(await p.query('SELECT id FROM trading.items WHERE seller_id=$1 AND inventory_id=$2',[a.seller_id,inv])).rows[0].id;
  const simulate=page.locator('form[action="/synthetic"]');await simulate.getByLabel('Item comment').selectOption(it);await simulate.getByRole('button').click();
  const o=(await p.query('SELECT * FROM trading.orders WHERE seller_id=$1 AND item_id=$2',[a.seller_id,it])).rows[0];assert.ok(o);
+ await page.locator('form[action="/synthetic"]').getByLabel('Item comment').selectOption(it);await page.locator('form[action="/synthetic"]').getByLabel('Synthetic buyer').selectOption('buyer-b');await page.locator('form[action="/synthetic"]').getByRole('button').click();
+ assert.equal((await p.query("SELECT state FROM trading.claims WHERE seller_id=$1 AND item_id=$2 AND buyer='buyer-b'",[a.seller_id,it])).rows[0].state,'backup');
  const config=page.locator('form[action="/instructions"]');await config.getByLabel('Synthetic payment instructions').fill('DEMO ONLY synthetic account');await config.getByLabel('Approved for sharing').selectOption('yes');await config.getByRole('button').click();
  const order=page.locator(`#order-${o.id}`);await order.getByLabel('Agreed MYR fee').fill('0.00');await order.getByRole('button',{name:'Agree fulfilment fee',exact:true}).click();
  await page.locator(`#order-${o.id}`).getByRole('button',{name:'Propose payment request',exact:true}).click();
  const draft=(await p.query("SELECT id FROM trading.drafts WHERE seller_id=$1 AND order_id=$2 AND kind='payment'",[a.seller_id,o.id])).rows[0];
  await page.locator(`#draft-${draft.id}`).getByRole('button').click();assert.match(await page.locator(`#draft-${draft.id}`).innerText(),/Delivered to fixture/);
- assert.equal((await p.query('SELECT reserved FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].reserved,1);
+ const payment=page.locator(`#order-${o.id} form[action="/confirm-payment"]`);await payment.getByLabel('I checked actual receipt',{exact:false}).check();await payment.getByRole('button').click();
+ const arrangement=page.locator(`#order-${o.id} form[action="/arrange"]`);await arrangement.getByLabel('Collection / COD / drop-off location').fill('Synthetic game shop');await arrangement.getByLabel('Meeting time').fill(new Date().toISOString());await arrangement.getByRole('button').click();
+ const handover=page.locator(`#order-${o.id} form[action="/fulfil"]`);await handover.getByLabel('Actual handover / receipt evidence').fill('Seller handed the card to synthetic buyer A');await handover.getByRole('button').click();
+ await page.locator(`#order-${o.id}`).getByRole('button',{name:'Complete transaction',exact:true}).click();
+ assert.equal((await p.query('SELECT state FROM trading.orders WHERE seller_id=$1 AND id=$2',[a.seller_id,o.id])).rows[0].state,'completed');
+ assert.equal((await p.query("SELECT count(*)::int AS n FROM trading.orders WHERE seller_id=$1 AND item_id=$2 AND payment='seller_verified'",[a.seller_id,it])).rows[0].n,1);
+ assert.equal((await p.query('SELECT unsold FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].unsold,0);
+ if(process.env.TRADING_SCREENSHOT)await page.screenshot({path:process.env.TRADING_SCREENSHOT,fullPage:true});
+ assert.equal((await p.query('SELECT reserved FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].reserved,0);
  }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
 });
