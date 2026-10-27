@@ -210,9 +210,9 @@ Retention is **through owner review**, with no automatic deletion job. Only the 
 
 ## Task and commit ledger
 
-All 27 tasks are complete after the final cleanup commit, with no remaining tasks in this change. Production integrations and long-run workload validation are intentionally outside this experiment. The change remains open for review; no archive, push or squash was performed. Pre-existing untracked skills, Facebook research and planning/configuration files were preserved and not swept into implementation commits.
+All 27 tasks are complete after the final cleanup commit, with no remaining tasks in this change. Production integrations and long-run workload validation are intentionally outside this experiment. The change remains open for review and was not archived or squashed. The 27 implementation commits preserved pre-existing untracked skills, research and planning/configuration files. A subsequent documentation/publication update adds the sanitised UI research and approved OpenSpec artifacts so repository links work; local `.codex` tooling remains untracked.
 
-The ledger below covers the 26 commits through the decision report. The final `chore(benchmark): verify scoped cleanup and retain experiment evidence` commit records task 7.4 and is identified in the final implementation response. `git log --reverse ba0010a..HEAD --oneline` reproduces the complete ledger.
+The ledger below covers the 27 implementation commits, ending with `24c82e5`, which records task 7.4 cleanup. Later documentation/publication commits are separate from the experiment tasks. `git log --reverse ba0010a..24c82e5 --oneline` reproduces this implementation ledger.
 
 | Commit | Message |
 | --- | --- |
@@ -242,3 +242,4 @@ The ledger below covers the 26 commits through the decision report. The final `c
 | `4184310` | docs(benchmark): calculate measured browser capacity and resource costs |
 | `5f74a29` | feat(benchmark): model queue latency and bounded demand sensitivities |
 | `c359235` | docs(benchmark): record fixture-only go decision and implementation evidence |
+| `24c82e5` | chore(benchmark): verify scoped cleanup and retain experiment evidence |

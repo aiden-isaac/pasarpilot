@@ -11,8 +11,7 @@ Before remote browser execution: obtain owner approval for any Minecraft stop, v
 collect pre/post-stop and warmed baselines, and verify container limits and non-root Chromium sandboxing.
 Start with one slot. No result from unit tests constitutes a browser benchmark or a GO decision.
 
-Runtime/data commands will be documented with their implementation. Raw outputs and browser profiles
-must remain protected and outside version control; publish only aggregate synthetic findings.
+The completed run returned GO for a one-slot fixture scheduler. See the [measured evidence](../docs/research/bounded-browser-lifecycle.md), [capacity analysis](../docs/research/bounded-browser-capacity.md) and [approved change](../openspec/changes/benchmark-bounded-browser-lifecycle/proposal.md). Raw outputs and browser profiles must remain protected and outside version control; publish only aggregate synthetic findings.
 
 `sh runtime-check.sh` checks rootless Podman/cgroup prerequisites without a browser launch.
 Build using `podman build --memory=1g --memory-swap=1g --cpu-quota=200000 --cpu-period=100000 -t localhost/pasarpilot-benchmark:v1 -f Containerfile .`
@@ -36,34 +35,87 @@ Browser and fixture runs explicitly disable Podman's host-proxy forwarding; traf
 internal fixture network. A writable ephemeral HOME is provided inside the capped tmpfs for Chromium
 runtime files; the selected persistent profile is the only seller state mounted into the container.
 
-After the authorised Minecraft shutdown and fixture setup, run:
+## Prepare the benchmark host
 
+Run browser commands on the prepared Linux benchmark host, from this `benchmark/` directory.
+Required tools are Node.js 20+, rootless Podman with cgroup v2/seccomp support and its init helper,
+Python 3 and `flock`. Run `npm ci`, `npm run check` and `npm test` before the image build above;
+`npm test` also compiles the harness. Local checks do not prove host sandbox compatibility.
+
+Before any browser launch, identify Minecraft by its actual process/controller and working directory,
+record its memory and a 60-second live RAM/CPU/swap/PSI baseline, then obtain explicit owner approval
+before using its normal console `stop` command. Verify saved-world exit and no restart; record a second
+60-second baseline. If it is already stopped, record that fact. Never send console commands to an
+unverified tmux pane, kill the server, edit world/configuration files or stop unrelated services.
+The [approved host gate](../openspec/changes/benchmark-bounded-browser-lifecycle/design.md) describes
+the Jarlaxle procedure; historical process IDs are not safe targets for a new run.
+
+After that gate, run `sh runtime-check.sh`, build the pinned base image and run
+`sh prepare-fixture.sh`. Keep the fixture alive and do not rebuild images, change workload, or run
+other benchmarks between primary arms. The fixture keeps server sessions in memory; restarting it
+invalidates the synthetic authentication tokens in existing profiles.
+
+## Run the matched comparison
+
+Choose a **new absolute data directory outside the repository** for each experiment. The following
+commands run on the benchmark host after preparation. Replace the example path before running;
+keep the same `BENCH_DATA_ROOT` and five-second cadence throughout both primary arms. This example
+assumes a Git checkout on the host; for a copied workspace, set `BENCH_REVISION` to the source commit
+recorded before transfer instead.
+
+```sh
+set -eu
+export BENCH_DATA_ROOT=/absolute/private/new-benchmark-run
+BENCH_REVISION=$(git rev-parse HEAD)
+export BENCH_REVISION
+umask 077
+node dist/src/cli.js baseline "$BENCH_DATA_ROOT" 5000
+node dist/src/cli.js smoke "$BENCH_DATA_ROOT"
+node dist/src/cli.js pilot "$BENCH_DATA_ROOT" 6 0
+node dist/src/cli.js baseline "$BENCH_DATA_ROOT" 5000
+node dist/src/cli.js calibrate "$BENCH_DATA_ROOT"
+cp "$BENCH_DATA_ROOT/manifest.json" "$BENCH_DATA_ROOT/runs/baseline-A.json"
+node dist/src/cli.js continuous "$BENCH_DATA_ROOT" 100 5000
+node dist/src/cli.js settle "$BENCH_DATA_ROOT"
+node dist/src/cli.js baseline "$BENCH_DATA_ROOT" 5000
+node dist/src/cli.js calibrate "$BENCH_DATA_ROOT"
+cp "$BENCH_DATA_ROOT/manifest.json" "$BENCH_DATA_ROOT/runs/baseline-B.json"
+node dist/src/cli.js rotation "$BENCH_DATA_ROOT" 100 5000
+node dist/src/cli.js settle "$BENCH_DATA_ROOT"
+node dist/src/cli.js faults "$BENCH_DATA_ROOT"
 ```
-BENCH_REVISION=<source-commit> node dist/src/cli.js baseline /absolute/private/data
-```
 
-This records a 60-second warmed baseline and a protected manifest with the minimum observed
-MemAvailable minus the host safety reserve and 1.5 GiB future-service reserve. It refuses a running
-Minecraft workload. Initial browser admission additionally requires 2 GiB; swap is not capacity.
+Run each command only after its predecessor succeeds; stop and inspect retained evidence after a
+failure. A baseline takes at least 60 seconds. It declares a budget from minimum observed MemAvailable
+minus `max(1 GiB, 15% of usable RAM)` and 1.5 GiB for future application/database services. Initial
+browser admission additionally requires the 2 GiB bootstrap cap; swap is not capacity.
 
-The optional final baseline argument declares cadence in milliseconds (default 60000). Primary arms
-must use that declared cadence: `node dist/src/cli.js continuous DATA 100 CADENCE_MS` then `rotation`
-with the same parameters. `pilot DATA 3 0` is a separate three-profile instrumentation check.
-`settle DATA` collects a five-minute post-shutdown sample. Arm A includes a five-minute idle segment.
-Use a freshly captured baseline after runtime changes; never interpret fixture timings as Facebook latency.
+The six-visit pilot covers three profiles; calibration records the measured allowance while retaining
+at least the same 2 GiB cap for both primary arms. The smoke check uses a separate dataset. Neither
+is an excluded warm-up within the primary visit counts. The final baseline argument is the declared
+cadence in milliseconds (default 60000); primary arms must match it. A five-second cadence accelerates
+the fixture experiment and establishes no Facebook freshness guarantee.
+
+Arm A includes a five-minute resident idle segment. Each `settle` captures five minutes after cleanup.
+Arm B performs 100 fresh-process visits across three profiles (34/33/33), verifies persistence without
+reseeding, and verifies process termination before releasing each profile. All failed attempts remain
+in the evidence. Do not force a higher concurrency or smaller reserve to finish a run.
 
 `faults DATA` runs the separate synthetic recovery suite. It retains failed datasets, first flushes
 seed state through clean shutdown, then tests five abrupt crashes against that committed baseline.
 It also tests expired ownership, supervisor reconciliation, cancellation, authentication/history
 recovery and uncertain actions. This does not assert durability of arbitrary in-flight browser writes.
 
-Optional experiments follow complete primary arms and settled cleanup, never concurrent builds:
+## Optional modes and capacity
 
-```
-node dist/src/cli.js concurrency DATA 2
-node dist/src/cli.js concurrency DATA 4
+Here `DATA` means the same absolute `BENCH_DATA_ROOT`. Optional experiments follow complete primary
+arms and settled cleanup, never concurrent builds:
+
+```sh
+node dist/src/cli.js concurrency "$BENCH_DATA_ROOT" 2
+node dist/src/cli.js concurrency "$BENCH_DATA_ROOT" 4
 podman build --http-proxy=false --memory=1g --memory-swap=1g --cpu-quota=200000 --cpu-period=100000 -t localhost/pasarpilot-benchmark-interactive:v1 -f Containerfile.interactive .
-node dist/src/cli.js interactive DATA
+node dist/src/cli.js interactive "$BENCH_DATA_ROOT"
 ```
 
 Concurrency uses fresh, distinct profiles in separate datasets; four slots require a safe two-slot
@@ -72,9 +124,9 @@ include a declared five-second sampling hold, which is excluded from work/cleanu
 
 The optional image uses signed HTTPS Ubuntu repositories and installs x11vnc/noVNC/websockify.
 Headed attempts use Podman's init process, a private X11 socket tmpfs and ephemeral Xauthority;
-VNC and WebSocket listeners bind loopback only. A real noVNC client uses a separate 576 MiB-capped
-container without any seller profile, sharing only the display network namespace. Both client
-and background capacity count toward admission. All containers retain sandboxing and a 256-task
+VNC and WebSocket listeners bind loopback only. A real noVNC client uses a separately capped
+container (576 MiB in the measured run) without any seller profile, sharing only the display network
+namespace. Both client and background capacity count toward admission. All containers retain sandboxing and a 256-task
 limit. Fifteen-second phase windows measure a static fixture, not a production streaming load.
 Initial authentication, public remote access and production inactivity policies remain out of scope.
 
@@ -85,9 +137,20 @@ higher-concurrency rows use measured batch work cycles where available and other
 extrapolate. Outgoing visits cost the same as observations unless separately measured. Overload
 returns unbounded backlog, not an invented finite delay. See the sanitised research report and CSV.
 
-Evidence/cleanup: keep `DATA` owner-only and outside Git. Preserve run manifests before replacing
+## Evidence and cleanup
+
+Keep `DATA` owner-only and outside Git. Preserve run manifests before replacing
 baselines (`runs/baseline-A.json`, `runs/baseline-B.json`) and collect `settle DATA` after each arm.
 The fixture keeps synthetic server sessions in memory; after stopping/restarting it, use a fresh
 benchmark dataset rather than silently reseeding preserved evidence. For this completed run, all
 browser/fixture containers and the labelled network were removed; protected data and images remain
 through owner review. Never prune unrelated containers/volumes or restart Minecraft automatically.
+
+To validate the planning artifacts from the repository root, with OpenSpec available:
+
+```sh
+openspec validate benchmark-bounded-browser-lifecycle --strict
+```
+
+The change remains unarchived. No production scheduler, database, Facebook integration, AI service,
+public remote-access gateway or dashboard is started by this runbook.
