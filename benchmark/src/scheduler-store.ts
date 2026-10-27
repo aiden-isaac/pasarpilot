@@ -87,6 +87,37 @@ export class SchedulerStore {
     await this.pool.query('SELECT 1');
   }
   async close() { await this.boss.stop({ graceful: false }).catch(() => undefined); await this.pool.end(); }
+  async tick(now = Date.now()) {
+    timestamp(now);
+    for (const t of scheduledTenants) await this.transaction(async c => {
+      const s = (await c.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1 FOR UPDATE`, [t])).rows[0]!;
+      if (!s.enabled || s.blocked) return;
+      const ticks = dueTicks(s.next_due.getTime(), s.interval_ms, now);
+      if (!ticks.count && !s.latest_due) return;
+      const latest = Math.max(ticks.count ? ticks.latest : 0, s.latest_due?.getTime() ?? 0);
+      let id = s.observation;
+      const firstPending = s.first_pending?.getTime() ?? s.next_due.getTime();
+      if (id) {
+        const current = await this.boss.getJobById<VisitJob>(t, id, { db: transactionDb(c), includeArchive: true });
+        if (!current) throw Error('missing-outstanding-observation');
+        if (current.state === 'created' || current.state === 'retry') {
+          // pg-boss 10 has no update API; pending payload refresh is scoped to the pinned schema.
+          await c.query(`UPDATE ${this.queueSchema}.job SET data=data || $2::jsonb WHERE id=$1 AND state IN ('created','retry')`,
+            [id, JSON.stringify({ dueAt: latest, deadline: latest + s.interval_ms })]);
+          await c.query(`UPDATE ${this.schema}.schedule SET latest_due=NULL WHERE tenant=$1`, [t]);
+        } else await c.query(`UPDATE ${this.schema}.schedule SET latest_due=$2, first_pending=COALESCE(first_pending,$3) WHERE tenant=$1`,
+          [t, new Date(latest), new Date(firstPending)]);
+      } else {
+        id = randomUUID();
+        const data: VisitJob = { id, tenant: t, kind: 'observation', revision: s.revision,
+          dueAt: latest, deadline: latest + s.interval_ms, firstPending };
+        if (!await this.boss.send(t, data, { id, singletonKey: 'observation', ...queueOptions, db: transactionDb(c) })) throw Error('observation-enqueue-conflict');
+        await c.query(`UPDATE ${this.schema}.schedule SET observation=$2, latest_due=NULL, first_pending=$3 WHERE tenant=$1`, [t, id, new Date(firstPending)]);
+      }
+      await c.query(`UPDATE ${this.schema}.schedule SET next_due=$2, coalesced=coalesced+$3 WHERE tenant=$1`,
+        [t, new Date(ticks.next), Math.max(0, ticks.count - (s.observation ? 0 : 1))]);
+    });
+  }
   async submitAction(t: string, id: string, expectedRevision: number, deadline: number, now = Date.now()) {
     tenant(t); actionId(id); timestamp(deadline); timestamp(now);
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw Error('invalid-action-request');
