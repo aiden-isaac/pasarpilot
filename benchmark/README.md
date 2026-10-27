@@ -292,4 +292,4 @@ default benchmark/scheduler visits retain their existing 400-event ledger and ow
 
 See the [setup, seller demo, recovery and acceptance report](../docs/research/assisted-wts-trading-core.md)
 for secure two-account provisioning, separate test commands and measured resource results. The approved
-change is `assisted-wts-trading-core` and remains unarchived. No live Facebook or real payment integration is enabled.
+change is [archived](../openspec/changes/archive/2026-10-28-assisted-wts-trading-core/proposal.md). No live Facebook or real payment integration is enabled.

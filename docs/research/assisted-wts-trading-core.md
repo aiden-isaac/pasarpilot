@@ -2,7 +2,7 @@
 
 Date: 2026-10-28 (Singapore). Change: `assisted-wts-trading-core`, spec-driven, 29 tasks.
 
-The synthetic MVP completes one authenticated RM10.00 sale with one stock commitment and a competing backup. It uses the existing TypeScript workspace, pinned PostgreSQL 17.11, pg 8.23.1, pg-boss 10.4.2 and Playwright 1.64.1. No dependencies were added. The change remains unarchived; no commits were pushed or squashed.
+The synthetic MVP completes one authenticated RM10.00 sale with one stock commitment and a competing backup. It uses the existing TypeScript workspace, pinned PostgreSQL 17.11, pg 8.23.1, pg-boss 10.4.2 and Playwright 1.64.1. No dependencies were added. The change was [archived on 2026-10-28](../../openspec/changes/archive/2026-10-28-assisted-wts-trading-core/proposal.md) after syncing all four capability specs; no commits were pushed or squashed.
 
 ## Delivered behavior
 
@@ -98,7 +98,7 @@ PGHOST=/absolute/private/test-dataset/socket TRADING_BROWSER=/path/to/installed/
 PGHOST=/absolute/private/test-dataset/socket npm run test:database
 SCHEDULER_DATA_ROOT=/absolute/private/prepared-idle-scheduler-dataset npm run test:fixture
 # From the repository root:
-openspec validate assisted-wts-trading-core --strict
+openspec validate --specs --strict
 ```
 
 Tests create synthetic records in an explicitly selected private test dataset. Keep test datasets separate from manual/demo workspaces. No test resets a seller schema or commits runtime datasets. The prepared-host regression deliberately exercises browser crashes and selected fixture/database restarts, so it requires an idle owned fixture dataset. Its survivor case correctly used SIGKILL only after the existing 15-second grace period.
@@ -174,7 +174,7 @@ Meta authorization and real-platform identity, ordering/completeness and messagi
 
 ## Atomic task commits
 
-Each row is one completed task, in tasks.md order. The last row is the acceptance/report commit itself; the final handoff supplies its exact hash.
+Each row is one completed task, in tasks.md order. The last row is the acceptance/report commit. Archival is recorded in a separate subsequent commit.
 
 | Hash | Conventional Commit message |
 | --- | --- |
@@ -206,4 +206,4 @@ Each row is one completed task, in tasks.md order. The last row is the acceptanc
 | 5354bae | test(trading): demonstrate authenticated RM10 sale with backup and collection |
 | 177ad7f | test(trading): cover tenant boundaries revisions review and reservation races |
 | 2b16f3b | test(fixtures): verify bounded browser capture through authenticated completed sale |
-| HEAD (this report) | test(trading): complete acceptance guards and publish operator runbook |
+| bc2cbc1 | test(trading): complete acceptance guards and publish operator runbook |
