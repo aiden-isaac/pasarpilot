@@ -1,7 +1,8 @@
 # Controlled browser lifecycle benchmark
 
-This workspace implements only the synthetic experiment in
-`openspec/changes/benchmark-bounded-browser-lifecycle/`. No Facebook, AI or trading integration.
+This workspace implements the synthetic lifecycle experiment and the bounded fixture scheduler in
+`openspec/changes/benchmark-bounded-browser-lifecycle/` and `openspec/changes/schedule-bounded-fixture-visits/`.
+No Facebook, AI or trading integration.
 
 Use Node.js 20 or newer, then `npm ci`, `npm run check`, `npm test` from this directory.
 Dependencies are exactly pinned in the lockfile. Browser installation is separate from dependency installation.
@@ -152,5 +153,28 @@ To validate the planning artifacts from the repository root, with OpenSpec avail
 openspec validate benchmark-bounded-browser-lifecycle --strict
 ```
 
-The change remains unarchived. No production scheduler, database, Facebook integration, AI service,
-public remote-access gateway or dashboard is started by this runbook.
+The benchmark change remains unarchived. The scheduler below adds a private fixture database/queue;
+there is no production platform integration, AI service, public remote-access gateway or dashboard.
+
+## Durable single-slot fixture scheduler
+
+The scheduler uses exactly three primary tenants, one browser slot and PostgreSQL/pg-boss. It reuses
+the benchmark's sandbox, selected-profile mount, host admission, profile lock/generation, heartbeat
+and verified shutdown. It keeps one outstanding observation and one explicit action per tenant;
+missed observation ticks coalesce and additional actions receive backpressure. A persisted round-robin
+cursor gives each eligible tenant one attempt per turn, including failures and actions.
+
+Versions: Node 20+ (Jarlaxle uses 22.23.4), PostgreSQL **17.11** (image pinned by digest in
+`prepare-scheduler-db.sh`), pg-boss **10.4.2**, pg **8.23.1**. The queue version retains the existing
+Node 20 baseline. Its `fetch`, `send`, `complete`, `fail` and `maintain` APIs are integration-tested.
+Pending-payload refresh and retry-generation settlement use short transactions against that pinned
+schema; upgrading pg-boss requires rerunning the database checks. Queue expiration does not kill
+Chromium or prove exactly-once external effects.
+
+Run from `benchmark/` on the prepared host after the Minecraft/runtime gate above. Choose a **new
+absolute private directory outside the checkout**. Do not reuse old benchmark profiles/evidence.
+Build the browser image and prepare the fixture as above; keep the same fixture instance alive
+through setup, pilot, clean run and fault suite. The database uses a private Unix socket, `--network=none`,
+no published ports, a 768 MiB cap and no swap. Its generated password file, volume, socket and raw
+results stay owner-only outside Git. Browser containers receive neither the database socket nor its
+credentials.
