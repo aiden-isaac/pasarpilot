@@ -6,6 +6,7 @@ import { Workspace } from './workspace.js';
 import { safeReturn } from './navigation.js';
 import { stylesheet,script } from './assets.js';
 import { text } from './values.js';
+import { updates } from './updates.js';
 export const escape=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export const field=(name:string,label:string,value:unknown='',type='text')=>`<label>${escape(label)} <input name="${escape(name)}" type="${type}" value="${escape(value)}" required></label> `;
 export const hidden=(name:string,value:unknown)=>`<input type="hidden" name="${escape(name)}" value="${escape(value)}">`;
@@ -67,6 +68,13 @@ export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-foun
    const cookie=(name:string)=>req.headers.cookie?.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1];
    const token=cookie('session'), auth=await session(p,token);
    if(auth)context={w:new Workspace(p,auth.seller_id),csrf:auth.csrf,url,path,fields:new URLSearchParams()};
+   if(path==='/updates'){
+    res.setHeader('Content-Type','application/json; charset=utf-8');
+    if(req.method!=='GET'){res.statusCode=405;res.end(JSON.stringify({error:'read-only'}));return;}
+    if(!auth){res.statusCode=401;res.end(JSON.stringify({error:'sign-in-required'}));return;}
+    try{res.end(JSON.stringify(await updates(new Workspace(p,auth.seller_id),url)));}catch(error){if(error instanceof Error&&error.message.startsWith('invalid-update')){res.statusCode=400;res.end(JSON.stringify({error:'invalid-query'}));return;}throw error;}
+    return;
+   }
    if(req.method==='GET' && path==='/login') {
     const csrf=randomBytes(32).toString('hex'); res.setHeader('Set-Cookie',`login_csrf=${csrf}; HttpOnly; SameSite=Strict; Path=/; Max-Age=600`);
     send(200,'<section><h2>Seller sign in</h2><p>Use your operator-provided invitation. This loopback workspace uses synthetic buyers and simulated replies only; no Facebook credentials or real banking connection are required.</p>'+form('/login',csrf,field('login','Seller login')+field('password','Password','','password'),'Log in')+'</section>');return;

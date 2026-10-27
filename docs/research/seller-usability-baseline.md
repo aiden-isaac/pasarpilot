@@ -260,3 +260,13 @@ uncertain message and inspection of committed state. Its earlier native-navigati
 interception test timed out in Playwright; only its owned sandboxed test browser
 was closed, and timeout cleanup was hardened. Actual crash/ack recovery remains
 in operations acceptance. Reviewed `appearance/uncertain-response.png`.
+
+## Task 5.1: private bounded update endpoint
+
+Authenticated GET `/updates` returns at most 20 recent activity summaries and
+five references per attention kind, never message/address/instruction/reason
+bodies. Query bounds, unexpected seller input, POST and revoked sessions are
+rejected. No-store remains set. The focused real-HTTP/database test passes
+foreign seller/private payload exclusion and a two-connection out-of-order
+identity commit: each check re-reads the bounded window and discovers the lower
+identity after its later commit, without treating a maximum ID as complete history.
