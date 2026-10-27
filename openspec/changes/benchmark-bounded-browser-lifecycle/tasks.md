@@ -36,7 +36,7 @@
 ## 6. Investigate optional modes only when admitted
 
 - [x] 6.1 Evaluate the two-slot budget using measured allowances and live headroom; run distinct-profile concurrency only if admitted, otherwise record the exact skip reason and leave capacity unmeasured.
-- [ ] 6.2 Evaluate four slots only after a safe lower-concurrency result and a fresh admission check; seed a fourth synthetic profile outside the primary dataset if admitted, and record measured contention or an explicit skip without exceeding the host envelope.
+- [x] 6.2 Evaluate four slots only after a safe lower-concurrency result and a fresh admission check; seed a fourth synthetic profile outside the primary dataset if admitted, and record measured contention or an explicit skip without exceeding the host envelope.
 - [ ] 6.3 If admitted, compare headless with headed/display mode and temporary protected noVNC with zero/one viewer; test exclusive mode handoff, release/inactivity/deadline cleanup and background-plus-interactive operation only where both modes fit.
 
 ## 7. Produce the decision and scoped handoff
