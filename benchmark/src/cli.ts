@@ -34,6 +34,8 @@ if (command === 'baseline' && dataRoot) {
 } else if (['pilot', 'continuous', 'rotation'].includes(command ?? '') && dataRoot) {
   await (await import('./runner.js')).run(initialise(dataRoot), command as 'pilot' | 'continuous' | 'rotation',
     Number(process.argv[4] ?? (command === 'pilot' ? 3 : 100)), Number(process.argv[5] ?? defaults.cadenceMs));
+} else if (command === 'interactive' && dataRoot) {
+  await (await import('./interactive.js')).interactive(initialise(dataRoot));
 } else if (command === 'concurrency' && dataRoot) {
   await (await import('./concurrency.js')).concurrency(initialise(dataRoot), Number(process.argv[4]));
 } else if (command === 'settle' && dataRoot) {

@@ -1,8 +1,8 @@
 import { chromium, type BrowserContext } from 'playwright';
 import { createInterface } from 'node:readline';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { assertLease, type Lease } from './ownership.js';
+import { assertLease, assertAutomation, type Lease } from './ownership.js';
 import { verifySandbox } from './sandbox.js';
 import { sampleAttempt } from './metrics.js';
 
@@ -12,6 +12,7 @@ const check = () => assertLease(JSON.parse(readFileSync(leaseFile, 'utf8')), exp
 const origin = process.env.FIXTURE_ORIGIN!;
 if (!origin || process.getuid?.() === 0) throw Error('unsafe-worker');
 mkdirSync('/tmp/home', { recursive: true, mode: 0o700 });
+if (process.env.DISPLAY) writeFileSync('/tmp/display', process.env.DISPLAY, { mode: 0o600 });
 let context: BrowserContext | undefined;
 const launch = performance.now();
 async function close() { await context?.close(); context = undefined; }
@@ -47,6 +48,7 @@ try {
         console.log(JSON.stringify({ id: command.id, status: response.status(), result: await response.json() })); continue;
       }
       if (command.op !== 'visit' && command.op !== 'verify') throw Error('unknown-operation');
+      assertAutomation(JSON.parse(readFileSync(leaseFile, 'utf8')));
       const restoration = performance.now();
       if (command.seed) {
         const response = await context.request.post(`${origin}/seed/${expected.tenant}`);

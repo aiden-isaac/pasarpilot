@@ -56,3 +56,24 @@ Use a freshly captured baseline after runtime changes; never interpret fixture t
 seed state through clean shutdown, then tests five abrupt crashes against that committed baseline.
 It also tests expired ownership, supervisor reconciliation, cancellation, authentication/history
 recovery and uncertain actions. This does not assert durability of arbitrary in-flight browser writes.
+
+Optional experiments follow complete primary arms and settled cleanup, never concurrent builds:
+
+```
+node dist/src/cli.js concurrency DATA 2
+node dist/src/cli.js concurrency DATA 4
+podman build --http-proxy=false --memory=1g --memory-swap=1g --cpu-quota=200000 --cpu-period=100000 -t localhost/pasarpilot-benchmark-interactive:v1 -f Containerfile.interactive .
+node dist/src/cli.js interactive DATA
+```
+
+Concurrency uses fresh, distinct profiles in separate datasets; four slots require a safe two-slot
+result. The per-slot allowance uses the larger primary peak with 125% rounded headroom. Batches
+include a declared five-second sampling hold, which is excluded from work/cleanup cycle timings.
+
+The optional image uses signed HTTPS Ubuntu repositories and installs x11vnc/noVNC/websockify.
+Headed attempts use Podman's init process, a private X11 socket tmpfs and ephemeral Xauthority;
+VNC and WebSocket listeners bind loopback only. A real noVNC client uses a separate 576 MiB-capped
+container without any seller profile, sharing only the display network namespace. Both client
+and background capacity count toward admission. All containers retain sandboxing and a 256-task
+limit. Fifteen-second phase windows measure a static fixture, not a production streaming load.
+Initial authentication, public remote access and production inactivity policies remain out of scope.

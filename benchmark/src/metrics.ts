@@ -26,6 +26,7 @@ export function sampleAttempt(cg: string) {
     memoryMax: scalar(join(cg, 'memory.max')), swap: scalar(join(cg, 'memory.swap.current')),
     swapMax: scalar(join(cg, 'memory.swap.max')), stat: pairs(join(cg, 'memory.stat')),
     cpu: pairs(join(cg, 'cpu.stat')), events: pairs(join(cg, 'memory.events')),
+    pidsCurrent: scalar(join(cg, 'pids.current')), pidsMax: scalar(join(cg, 'pids.max')), pidsEvents: pairs(join(cg, 'pids.events')),
     processes: pids.length, rssSum, pssSum, processSwapSum, inaccessibleProcesses };
 }
 export function guardBytes(total: number): number { return Math.max(GiB, total * 0.15); }

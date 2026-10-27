@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { defaults } from './config.js';
 import { sampleAttempt } from './metrics.js';
 import { profilePath, writeJson } from './storage.js';
-import { Ownership, readLease } from './ownership.js';
+import { Ownership, readLease, assertAutomation } from './ownership.js';
 import { podman, inspect, rootLabel, label } from './container.js';
 export type Reply = { id?: string; ready?: boolean; error?: string; [key: string]: unknown };
 export function cgroupPath(name: string): string | undefined {
@@ -43,7 +43,7 @@ export class Session {
       '-v', `${profilePath(owner.root, owner.lease.tenant)}:/profile:rw`,
       '-v', `${owner.attemptPath}:/attempt:ro`, '-e', `FIXTURE_ORIGIN=${origin}`, '-e', `HEADED=${headed}`,
       '-e', 'HOME=/tmp/home', '-e', 'XDG_CONFIG_HOME=/tmp/home/.config', '-e', 'XDG_CACHE_HOME=/tmp/home/.cache',
-      'localhost/pasarpilot-benchmark:v1', 'dist/src/worker.js'];
+      ...(headed ? ['--init', '--tmpfs', '/tmp/.X11-unix:rw,nosuid,nodev,mode=1777,size=1m', '--entrypoint', 'xvfb-run', 'localhost/pasarpilot-benchmark-interactive:v1', '-a', '-f', '/tmp/Xauthority', '-e', '/dev/stderr', '-s', '-screen 0 1280x720x24', 'node'] : ['localhost/pasarpilot-benchmark:v1']), 'dist/src/worker.js'];
     this.child = spawn('podman', args);
     this.child.stdin.on('error', e => { for (const p of this.pending.values()) p.reject(e); this.pending.clear(); });
     this.ready = new Promise((resolveReady, rejectReady) => {
@@ -80,7 +80,10 @@ export class Session {
     });
   }
   async send(command: Record<string, unknown>, closing = false): Promise<Reply> {
-    if (!closing) this.owner.check();
+    if (!closing) {
+      this.owner.check();
+      if (command.op === 'visit' || command.op === 'verify') assertAutomation(readLease(this.owner.statePath));
+    }
     const id = randomUUID();
     return new Promise((resolveReply, reject) => {
       const timeout = setTimeout(() => { this.pending.delete(id); reject(Error('visit-timeout')); }, defaults.visitTimeoutMs);

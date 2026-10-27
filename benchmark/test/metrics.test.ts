@@ -26,6 +26,7 @@ test('cgroup accounting keeps physical metrics separate and discloses unavailabl
     assert.equal(sample.memory, 1048576); assert.equal(sample.peak, 2097152);
     assert.equal(sample.processes, 1); assert.ok(sample.pssSum > 0);
     assert.equal(sample.swapMax, null);
+    assert.equal(sample.pidsCurrent, null);
     assert.ok(diskUsage(root).allocatedBytes > 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

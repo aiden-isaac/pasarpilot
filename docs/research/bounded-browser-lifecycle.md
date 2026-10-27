@@ -118,3 +118,22 @@ Two-slot batch work/cleanup cycles were 3.103, 2.968 and 3.046 seconds, excludin
 After the safe two-slot result, four slots independently passed admission: **2,304 MiB** total allowance within the same reserve policy. Three batches completed 12 visits across four distinct synthetic profiles, with the fourth identity/profile outside the primary dataset. Maximum sampled aggregate memory was **1,123.18 MiB**, maximum individual kernel peak 285.02 MiB, and minimum host MemAvailable 5,128.56 MiB. PSI full avg10 remained zero. Work/cleanup batch cycles were 4.997, 4.689 and 4.837 seconds after excluding the sampling hold.
 
 Thus **four concurrent isolated workers were safely exercised with Minecraft stopped**, not four workers proven at sustained production load. The measured mean batch cycle grew from 3.039 seconds at two slots to 4.841 seconds at four. Do not advertise fourfold scaling or reuse this budget after Minecraft/other services return without a fresh baseline and live admission.
+
+## Temporary interactive mode
+
+Final run `interactive-1793089005472` passed all seven checks with 15-second static-display sampling windows: clean headless release, exclusive same-profile handoff, one real noVNC viewer, a concurrent background visit using another profile, explicit release, accelerated three-second inactivity/deadline shutdowns, and return to headless with persisted identity/storage. The deadline tests use the harness timer; no production idle detector or access gateway was built.
+
+| Server mode, same synthetic fixture | Median cgroup current | Maximum current in window |
+| --- | ---: | ---: |
+| Headless Chromium | 271.35 MiB | 276.43 MiB |
+| Headed Chromium + private Xvfb | 294.78 MiB | 300.53 MiB |
+| Plus noVNC/VNC, zero viewers | 322.89 MiB | 323.14 MiB |
+| Plus one connected viewer | 335.92 MiB | 337.05 MiB |
+
+The real [noVNC browser client](https://github.com/novnc/noVNC/blob/master/docs/EMBEDDING.md) runs in a **separate capped container/cgroup with no seller profile**. Its median/peak memory was 285.12/293.98 MiB; that client cost normally resides on the seller's device and is not included in the server column. It joins the display's network namespace only to reach loopback VNC/WebSocket listeners; no ports are published. The server kernel peak was 338.74 MiB, and the separate concurrent background browser peaked at 285.88 MiB. All three containers were admitted: 2 GiB server + 576 MiB client + 576 MiB background = 3.125 GiB, below the warmed 3.67 GiB budget. Minimum host MemAvailable was 5,431.77 MiB, PSI full avg10 zero, swap-out zero, and no OOM/PID-limit events occurred. Server and client each retained the 256-task/thread cap.
+
+Measured start-to-ready: headless 1.429/1.442 seconds; headed 1.670–1.685 seconds. Verified stop/release took 448–479 ms for single-session cases; releasing the viewer/background/server group took 1.314 seconds. A display is started only for headed mode and is fully removed at session termination. Headless-to-headed requires closing/reopening the profile; viewing is not switched onto an existing headless browser in place. An unwatched headed browser still consumes Chromium, Xvfb and optional VNC memory.
+
+Retained failed optional preflights identified HTTP-only package mirror rejection, `xvfb-run` waiting as PID 1, a missing Xauthority environment for VNC, and the combined browser/client hitting a 256-task cap. HTTPS signed package sources, Podman's init process, a fixed ephemeral Xauthority path and separate viewer accounting corrected these issues. Two earlier passing combined-process trials are superseded by the final separate-cgroup measurement; none belong to primary clean-visit denominators. Optional image ID: `04a53ad64c16539e84c0f1211f8fdd06ebb9f98574dafbbb028b0299c583bc53`; packages: noVNC 1.3.0-2, x11vnc 0.9.16-10, websockify 0.10.0+dfsg1-5build2. The optional image adds these packages to the pinned Chromium image; results compare deployed modes, not a browser-only microbenchmark.
+
+The temporary VNC password is generated for the fixture run, redacted from diagnostics, and deleted after verified shutdown. This loopback-only experiment is not a production remote-access authentication/TLS design. Static short windows do not establish scrolling/video bandwidth, simultaneous premium-seller capacity or long-lived interactive reliability.

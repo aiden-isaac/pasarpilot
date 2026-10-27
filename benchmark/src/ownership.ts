@@ -11,6 +11,9 @@ export function readLease(path: string): Lease { return JSON.parse(readFileSync(
 export function assertLease(actual: Lease, expected: Pick<Lease, 'attempt' | 'generation'>, now = Date.now()): void {
   if (actual.attempt !== expected.attempt || actual.generation !== expected.generation || actual.cancelled || actual.expires <= now) throw Error('ownership-lost');
 }
+export function assertAutomation(lease: Lease): void {
+  if (lease.state === 'interactive') throw Error('interactive-control-exclusive');
+}
 export async function holdLock(path: string): Promise<ChildProcessWithoutNullStreams> {
   const lock = spawn('flock', ['-n', '-E', '73', path, 'sh', '-c', 'printf "locked\\n"; cat >/dev/null']);
   await new Promise<void>((resolve, reject) => {
