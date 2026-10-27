@@ -178,3 +178,19 @@ through setup, pilot, clean run and fault suite. The database uses a private Uni
 no published ports, a 768 MiB cap and no swap. Its generated password file, volume, socket and raw
 results stay owner-only outside Git. Browser containers receive neither the database socket nor its
 credentials.
+
+```sh
+export SCHEDULER_DATA_ROOT=/absolute/private/new-scheduler-run
+sh prepare-scheduler-db.sh "$SCHEDULER_DATA_ROOT" podman
+node dist/src/cli.js scheduler-setup "$SCHEDULER_DATA_ROOT" 120000
+node dist/src/cli.js baseline "$SCHEDULER_DATA_ROOT" 10000
+node dist/src/cli.js scheduler-run "$SCHEDULER_DATA_ROOT" 3
+node dist/src/cli.js scheduler-status "$SCHEDULER_DATA_ROOT"
+```
+
+Inspect the three pilot results: require complete observations, clean shutdown and one durable
+consumer result each. The 2 GiB bootstrap cap remains in use; do not copy the historical 576 MiB
+allowance without fresh calibration. A warmed full-stack baseline retains the host guard and the
+conservative 1.5 GiB future-service reserve. Separate service samples check database cgroup memory
+plus scheduler RSS against a further 1.5 GiB planning envelope; this sum is deliberately conservative.
+Unsafe admission defers without taking a queue claim; pressure/accounting failures stop execution.
