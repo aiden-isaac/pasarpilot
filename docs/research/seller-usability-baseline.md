@@ -308,3 +308,15 @@ Domain tests pass concurrent/replayed start, partial setup resume, A/B replay,
 foreign scope and separate run preservation. Actual browser A/B guide passes with
 zero deliveries/unverified payment and no overflow at 390/1280px; reviewed
 `appearance/guided-390.png`. The complete twice-through guide sale follows in 6.3.
+
+## Task 6.3: two complete guided sales
+
+The existing fresh-database browser acceptance now completes onboarding and two
+guided sales at 1280×800 and 390×844, plus 360×800 without JavaScript. All three
+cases pass: both orders/history and instruction deliveries remain retained, each
+has exactly one stock commitment, each B ends unfulfilled, and stock reaches
+zero once per run. Seller receipt, actual collection and completion stay explicit.
+Seven focused tests pass including existing unpaid expiry/promotion, ambiguous
+review and intermediate postage/drop-off cases. Private second-run activity
+screenshots are `test-20261028/two-guided-sales-*.png`; review-page images remain
+in `appearance/`. These six finite browser sales are not operational soak evidence.
