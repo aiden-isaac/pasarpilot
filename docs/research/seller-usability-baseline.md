@@ -129,3 +129,17 @@ catalog mutations work independently of list position. Focused database test/bui
 pass: traverse 235 matches, search/edit/map/open the final row, reject foreign
 listing association and incompatible cursor/search input. UI selectors are wired
 in the next selected-view task rather than adding a second set of forms.
+
+## Task 2.1: selected seller views
+
+Overview, inventory, WTS, conversations, orders/history and settings now query only
+the selected bounded sections. Scoped detail pages and child tabs link items,
+listings, claims, conversations, reviews and orders; new records open directly.
+Search selectors retain an explicitly chosen owned ID, and paged/filter return
+URLs are local/allowlisted. Updated dashboard callers and foreign-detail checks.
+Five units and both dashboard tests pass, including a complete sandboxed Brave
+RM10 sale on the accumulated test dataset. Separate rendered review at 1280×800
+and 360×800 found and fixed search results reopening inside a closed disclosure.
+Navigation spacing/visual polish continues in 2.2. Private screenshots:
+`demo-20261028/task-07-{desktop,mobile}.png`. DevTools connection timed out;
+Playwright used a separate sandboxed Brave process, never existing browser tabs.

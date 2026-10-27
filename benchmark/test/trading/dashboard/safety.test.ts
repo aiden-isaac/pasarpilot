@@ -16,8 +16,12 @@ test('authenticated HTTP boundary rejects foreign IDs forged origin CSRF and sta
  const post=(path:string,data:Record<string,string>,origin=base)=>fetch(base+path,{method:'POST',redirect:'manual',headers:{cookie:`session=${s.token}`,origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:s.csrf,...data})});
  try{
  const key=id(),card={name:'<script>syntheticUnsafe()</script>',printing:'SYN',collector:'1',language:'English',finish:'nonfoil',condition:'NM',unsold:1,price:1000};await inventory(wa,card,key);await inventory(wb,{...card,name:'PRIVATE-SELLER-B'},key);
- const html=await (await fetch(base,{headers:{cookie:`session=${s.token}`}})).text();assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>syntheticUnsafe'));assert.ok(!html.includes('PRIVATE-SELLER-B'));
+ const html=await (await fetch(base+'/?view=inventory&id='+key,{headers:{cookie:`session=${s.token}`}})).text();assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>syntheticUnsafe'));assert.ok(!html.includes('PRIVATE-SELLER-B'));
  const order=await payable(wb);assert.equal((await post('/cancel',{id:order.order,version:'2',reason:'forged',seller_id:b.seller_id})).status,409);assert.equal((await wb.get('orders',order.order)).state,'awaiting_payment');
+ for(const [view,id] of [['orders',order.order],['inventory',order.inv],['listings',order.post],['items',order.item],['conversations',order.conv]]){
+  const response=await fetch(base+'/?'+new URLSearchParams({view:view!,id:id!}),{headers:{cookie:`session=${s.token}`}});assert.equal(response.status,409);assert.ok(!(await response.text()).includes('PRIVATE-SELLER-B'));
+ }
+ const filtered=await fetch(base+'/?view=orders&state=paid&buyer=buyer-a',{headers:{cookie:`session=${s.token}`}});assert.equal(filtered.status,200);assert.match(await filtered.text(),/aria-current="page"/);
  const draft=(await p.query('SELECT id FROM trading.drafts WHERE seller_id=$1 AND order_id=$2',[wb.seller,order.order])).rows[0];assert.equal((await post('/approve',{id:draft.id,version:'1'})).status,409);
  assert.equal((await fetch(base+'/?order='+order.order,{headers:{cookie:`session=${s.token}`}})).status,409);
  assert.equal((await post('/listing',{title:'forged',csrf:'invalid'})).status,403);assert.equal((await post('/listing',{title:'forged'},'https://foreign.invalid')).status,403);

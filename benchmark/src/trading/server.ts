@@ -3,11 +3,12 @@ import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
 import { login,logout,session } from './auth.js';
 import { Workspace } from './workspace.js';
+import { safeReturn } from './navigation.js';
 export const escape=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export const field=(name:string,label:string,value:unknown='',type='text')=>`<label>${escape(label)} <input name="${escape(name)}" type="${type}" value="${escape(value)}" required></label> `;
 export const hidden=(name:string,value:unknown)=>`<input type="hidden" name="${escape(name)}" value="${escape(value)}">`;
 export const form=(path:string,csrf:string,body:string,button:string)=>`<form method="post" action="${path}">${hidden('csrf',csrf)}${body}<button>${escape(button)}</button></form>`;
-export type Mutation=(w:Workspace,path:string,f:URLSearchParams)=>Promise<void>;
+export type Mutation=(w:Workspace,path:string,f:URLSearchParams)=>Promise<void|string>;
 export type View=(w:Workspace,csrf:string,url:URL)=>Promise<string>;
 export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-found');},view:View=async()=>'<p>Inventory and trading workspace</p>') {
  const app=createServer(async(req,res)=>{
@@ -31,15 +32,16 @@ export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-foun
     let body=''; for await(const b of req){body+=b;if(Buffer.byteLength(body)>16384){send(413,'Form too large');return;}}
     const f=new URLSearchParams(body); if([...f.keys()].some(k=>f.getAll(k).length!==1)) throw Error('duplicate-fields');
     if(!f.get('csrf') || f.get('csrf')!==(path==='/login'?cookie('login_csrf'):auth?.csrf)) {send(403,'Invalid CSRF context');return;}
+    let destination:string|void=undefined;
     if(path==='/login') {
      const s=await login(p,f.get('login')??'',f.get('password')??'',token);
      res.setHeader('Set-Cookie',`session=${s.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`);
     } else {
      if(!auth){send(401,'Log in required');return;}
      if(path==='/logout') {await logout(p,token!);res.setHeader('Set-Cookie','session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');}
-     else await mutate(new Workspace(p,auth.seller_id),path,f);
+     else destination=await mutate(new Workspace(p,auth.seller_id),path,f);
     }
-    res.writeHead(303,{Location:path==='/logout'?'/login':'/'});res.end();return;
+    res.writeHead(303,{Location:path==='/logout'?'/login':safeReturn(destination??f.get('return')??'/')});res.end();return;
    }
    if(req.method!=='GET'){send(405,'Method not allowed');return;}
    if(!auth){send(401,'<a href="/login">Log in</a>');return;}
