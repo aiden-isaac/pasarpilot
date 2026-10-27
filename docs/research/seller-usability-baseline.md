@@ -198,3 +198,12 @@ The focused HTTP/database test proves credentials/payment versions and the other
 seller stay unchanged, one audit entry is appended and the profile persists after
 logout plus connection/server restart. Build and the browser sale pass; the
 Playwright workflow edits the actual profile form and verifies the shell identity.
+
+## Task 3.2: resumable first-use checklist
+
+Overview/settings derive six setup facts using seller-scoped EXISTS queries and
+profile/instruction versions; guidance remains an always-available link. Links
+reuse existing forms and the first owned listing's mapping controls. A fresh
+isolated-database test passes interrupted/out-of-order setup, other-seller
+isolation, disabled negotiation, unchanged record counts and zero deliveries or
+orders from setup alone. Build and browser profile-to-sale workflow pass.

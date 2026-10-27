@@ -17,7 +17,7 @@
 ## 3. Add minimal invited-seller onboarding
 
 - [x] 3.1 Add the authenticated display-profile form with current-version/CSRF validation and transactional activity; test foreign/stale/unsafe input and persistence across logout/restart without changing login or payment-instruction versions.
-- [ ] 3.2 Add first-use checklist links/progress derived from owned profile, inventory, listing/mapping and instruction facts; reuse existing forms/defaults and test interrupted/out-of-order onboarding without duplicate records or implicit approvals.
+- [x] 3.2 Add first-use checklist links/progress derived from owned profile, inventory, listing/mapping and instruction facts; reuse existing forms/defaults and test interrupted/out-of-order onboarding without duplicate records or implicit approvals.
 - [ ] 3.3 Add concise persistent negotiation/intervention help and synthetic-scope login guidance; exercise an invited seller's full onboarding on narrow and desktop layouts, including disabled negotiation and separate instruction/delivery approval.
 
 ## 4. Guard critical interactions and make errors recoverable
