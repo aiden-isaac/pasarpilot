@@ -90,3 +90,21 @@ The raw sampled memory integral covers 126.15 seconds between live cgroup sample
 All **16 cases passed** in the post-primary suite (`faults-1793087304794`), including five injected attempt crashes and restoration after the fifth crash. This separate denominator does not alter either primary arm's 100/100 first-attempt result. History/authentication failure now explicitly closes capacity, records `reauth-required`, and resumes only through a separate explicit fixture-recovery session. Duplicate-profile/expired-owner rejection, cancellation, stale/uncertain actions and supervisor fencing also passed.
 
 A deliberately suspended worker could not answer graceful close. The supervisor hit the 15-second close deadline, performed bounded container termination, verified absence, then reopened the committed profile in the next case. Container stop is asynchronous so host pressure checks and heartbeat renewal continue while waiting. Forced-cleanup reason and elapsed case time are retained in the protected aggregate fault record. This tests a frozen worker in addition to abrupt crashes; it does not guarantee durability of unfinished browser writes.
+
+## Reclamation and memory-time
+
+Both five-minute cleanup windows contain 301 samples over at least 300 seconds. The permitted available-memory deterioration was `max(256 MiB, 10% of the 2 GiB cap) = 256 MiB`.
+
+| Host median | Before A | Settled after A | Before B | Settled after B |
+| --- | ---: | ---: | ---: | ---: |
+| MemAvailable, MiB | 6,384.37 | 6,392.89 | 6,391.96 | 6,378.46 |
+| Anonymous pages, MiB | 148.64 | 155.88 | 155.77 | 157.04 |
+| File cache, MiB | 5,088.91 | 4,989.97 | 4,990.05 | 4,999.27 |
+
+Available-memory deterioration was **none after A** and **13.50 MiB after B**. Anonymous differences were +7.24/+1.27 MiB, with no sustained residual growth or surviving browser cgroup. Both passed. Settled swap-out and PSI full averages were zero; A's settled window read in three old swapped pages, without swap-out. Existing occupied swap remained 80.86 MiB. Reclaimable file cache is not a browser leak.
+
+Rotation per-visit kernel peak median/p95/max was 278.99/280.55/281.55 MiB. Median peaks across successive 25-visit batches were 278.72, 279.07, 279.01 and 279.18 MiB: no accumulating live browser footprint. All 100 attempts retained kernel peak, hard-limit, swap and CPU accounting; three transient process-read gaps affected only RSS/PSS diagnostics. Cgroup anon/file/kernel medians were 226.55/9.86/18.41 MiB for rotation and 318.23/17.02/19.51 MiB for the resident control. Categories overlap at subcategory level (for example shmem within file); do not sum diagnostic categories indiscriminately.
+
+At one-second resolution, trapezoidal integration covers 794.46 continuous seconds but only 126.15 rotated seconds between live samples. Instead of hiding startup gaps, bound each rotated visit by its whole-attempt **kernel peak × complete occupied duration**. The sum is at most **64,584 MiB-seconds**, including the unobserved startup/teardown gaps; the sampled partial integral is 26,357 MiB-seconds. Over the same first 497.31 wall seconds the continuous arm's sampled integral is approximately **180,265 MiB-seconds**. Rotation's conservative upper bound is 35.8% of that observed control cost. The extra 300-second continuous idle window is reported separately, not used to inflate this matched comparison. These are cgroup memory-time estimates/bounds, not total-host energy or unique-PSS accounting.
+
+The five-second paced rotation completed **723.9 checks/hour** in the experiment. Back-to-back raw/70% capacity calculated from complete occupied time is about **1,555/1,088 checks/hour**, not a measured sustained zero-cadence run. All results are for the tiny synthetic fixture.
