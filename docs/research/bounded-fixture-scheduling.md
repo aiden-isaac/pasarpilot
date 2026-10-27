@@ -100,6 +100,26 @@ took 17.9 seconds overall. Cleanup preceded replacement ownership. The successfu
 has no unsettled attempts or queued jobs; its remaining uncertain action is explicitly recorded.
 Prior failed fault data and deliberately interrupted attempts remain retained separately.
 
+## Limits and retained preflight failures
+
+- Restarting the fixture invalidates sessions/action history. Podman also changed its private IP in
+  the reset test, changing browser storage origin. Recovery correctly refused absent markers instead
+  of reseeding. The test initially expected restoration and was corrected to assert safe refusal when
+  the origin changes; the failed run remains retained. Use a new dataset after fixture replacement,
+  or explicit recovery only when committed state can actually be verified.
+- Before the accepted pilot, pg-boss's declared `purge()` method was absent at runtime; the supported
+  `maintain()` path replaced it and was integration-tested. A separate three-attempt pilot exposed
+  unreadable image dependencies under a restrictive umask; the image now grants read access to copied
+  program assets. Those failures preceded fixture authentication/seeding and remain separate from the
+  predeclared clean denominator.
+- Crash guarantees cover flushed observations and previously committed browser state. A counter
+  mismatch requires recovery, not profile erasure. A negative action lookup does not prove that an
+  external effect never occurred.
+- This finite runner loads retained history for status/evidence. Long-lived operation needs bounded
+  history queries and longer representative measurements; six outstanding jobs do not bound history.
+  More slots, real accounts, production encryption/access control, public access and Meta authorisation
+  remain outside this change.
+
 ## Evidence, cleanup and handoff
 
 Raw data remains owner-only on Jarlaxle under the selected scheduler data root, outside Git. It

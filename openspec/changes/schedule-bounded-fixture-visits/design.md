@@ -77,5 +77,5 @@ Rollback stops new dispatch, fences/cleans the current attempt and verifies term
 
 ## Open Questions
 
-- Which pinned queue/database combination meets the Node baseline? Resolve with integration checks.
-- Does the warmed stack fit Jarlaxle with unchanged reserves? Resolve through measurement.
+- Resolved: PostgreSQL 17.11, pg-boss 10.4.2 and pg 8.23.1 passed the Node 20 compatibility and real-database transaction/claim checks; Jarlaxle runs the existing Node 22.23.4 toolchain.
+- Resolved for the tested fixture: 102/102 clean visits and 16/16 recovery cases passed with unchanged reserves and the 2 GiB bootstrap cap. See `docs/research/bounded-fixture-scheduling.md` for resource measurements and remaining production limits.
