@@ -8,7 +8,16 @@ export type Observation = { schemaVersion: 1; eventId: string; sourceId: string;
   sourceRevision: number; attemptId: string; generation: number; observedAt: string; eventCount: number };
 export function observations(root: string): Observation[] {
   const path = join(root, 'events', 'observations.jsonl');
-  return existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
+  if (!existsSync(path)) return [];
+  const data = readFileSync(path, 'utf8');
+  if (data && !data.endsWith('\n')) throw Error('incomplete-observation-ledger');
+  return data.split('\n').filter(Boolean).map(line => {
+    const event = JSON.parse(line) as Observation;
+    if (event.schemaVersion !== 1 || !event.tenant || event.sourceId !== `${event.tenant}:${event.sourceRevision}` ||
+        !Number.isSafeInteger(event.sourceRevision) || event.sourceRevision < 0 || event.eventCount !== 400 ||
+        !event.attemptId || !Number.isInteger(event.generation) || !Number.isFinite(Date.parse(event.observedAt))) throw Error('invalid-observation-ledger');
+    return event;
+  });
 }
 export function appendObservation(owner: Ownership, counter: number, eventCount: number): Observation {
   owner.check();

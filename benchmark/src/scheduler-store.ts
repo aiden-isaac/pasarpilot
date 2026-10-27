@@ -205,6 +205,10 @@ export class SchedulerStore {
     tenant(t);
     await this.pool.query(`UPDATE ${this.schema}.schedule SET blocked=NULL,enabled=true,revision=revision+1,next_due=now() WHERE tenant=$1`, [t]);
   }
+  async pendingAttempts(): Promise<{ job: string; delivery: number; data: VisitJob; owner: { attempt: string; generation: number } | null }[]> {
+    return (await this.pool.query(`SELECT * FROM ${this.schema}.attempt WHERE result IS NULL ORDER BY started_at`)).rows;
+  }
+  // shortcut: fixture datasets load full history; paginate before long-lived operation.
   async status() {
     await this.identity();
     const schedules = (await this.pool.query(`SELECT * FROM ${this.schema}.schedule ORDER BY tenant`)).rows;

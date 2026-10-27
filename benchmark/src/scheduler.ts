@@ -109,6 +109,48 @@ export async function executeJob(store: SchedulerStore, job: Claim, manifest: Sc
   });
 }
 
+export async function recoverJobs(store: SchedulerStore) {
+  reconcile(store.root);
+  const ledger = observations(store.root);
+  for (const pending of await store.pendingAttempts()) {
+    const current = await store.boss.getJobById<typeof pending.data>(pending.data.tenant, pending.job, { includeArchive: true });
+    if (!current) throw Error('interrupted-job-missing');
+    const job: Claim = { ...current, data: pending.data, retryCount: pending.delivery };
+    let attempt = pending.owner?.attempt;
+    if (!attempt) {
+      attempt = readdirSync(join(store.root, 'attempts')).find(name => {
+        const path = join(store.root, 'attempts', name, 'job.json');
+        if (!existsSync(path)) return false;
+        const saved = JSON.parse(readFileSync(path, 'utf8'));
+        return saved.id === pending.job && saved.retryCount === pending.delivery;
+      });
+    }
+    const event = attempt ? ledger.find(e => e.attemptId === attempt) : undefined;
+    if (event && (event.tenant !== pending.data.tenant || (pending.owner && event.generation !== pending.owner.generation))) throw Error('observation-owner-mismatch');
+    const resultPath = attempt ? join(store.root, 'attempts', attempt, 'terminated.json') : '';
+    let result: Outcome = existsSync(resultPath) ? JSON.parse(readFileSync(resultPath, 'utf8')) : { outcome: 'failed', error: 'supervisor-interrupted' };
+    if (typeof result.outcome !== 'string' || (result.observation && !event)) throw Error('invalid-attempt-evidence');
+    if (event) {
+      writeJson(join(store.root, 'locks', `${event.tenant}.counter.json`), { counter: event.sourceRevision, seedAttempted: true });
+      result = { ...result, outcome: 'completed', error: undefined, observation: event };
+    } else if (pending.data.kind === 'action') {
+      const action = (await store.pool.query(`SELECT outcome FROM ${store.schema}.action WHERE job=$1`, [pending.job])).rows[0];
+      const path = join(store.root, 'events', `${pending.data.tenant}-${pending.data.actionId}.json`);
+      const local = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined;
+      if (local && (local.id !== pending.data.actionId || local.tenant !== pending.data.tenant || !['applied','uncertain'].includes(local.state))) throw Error('invalid-action-evidence');
+      if (local?.state === 'applied') result = { outcome: 'applied' };
+      else if (action?.outcome === 'uncertain' || local) result = { outcome: 'uncertain', error: 'action-needs-reconciliation' };
+    }
+    await store.finish(job, result, Date.now(), true);
+  }
+  for (const name of podman(['ps', '-a', '--filter', `label=io.pasarpilot.root=${rootLabel(store.root)}`, '--format', '{{.Names}}']).split('\n').filter(Boolean)) {
+    const record = inspect(name);
+    if (record.State.Running || record.Config.Labels[label] !== 'true') throw Error('termination-unproven');
+    podman(['rm', name]);
+  }
+  await store.boss.maintain();
+}
+
 export async function runScheduler(store: SchedulerStore, manifest: SchedulerManifest, count: number) {
   if (!Number.isSafeInteger(count) || count < 1 || count > 10000) throw Error('invalid-planned-visit-count');
   const lock = await holdLock(join(store.root, 'locks', 'supervisor.lock'));
@@ -121,7 +163,7 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
   try {
     writeJson(join(store.root, 'runs', `${runId}.plan.json`), { schemaVersion: 1, planned: count, manifest,
       schedules: (await store.status()).schedules, versions: JSON.parse(readFileSync(join(store.root, 'scheduler.json'), 'utf8')), startedAt: Date.now() });
-    reconcile(store.root);
+    await recoverJobs(store);
     let lastMaintenance = Date.now();
     while (!stopping && dispatched < count) {
       if (Date.now() - lastMaintenance >= 60_000) { await store.boss.maintain(); lastMaintenance = Date.now(); }
@@ -160,7 +202,7 @@ export async function runScheduler(store: SchedulerStore, manifest: SchedulerMan
 export async function recoverTenant(store: SchedulerStore, value: string, mode: 'verify' | 'history' | 'auth', manifest: SchedulerManifest) {
   const t = tenant(value), lock = await holdLock(join(store.root, 'locks', 'supervisor.lock'));
   try {
-    reconcile(store.root);
+    await recoverJobs(store);
     const result = await ownedSession(store.root, t, manifest, Date.now() + 120_000, () => store.healthy(), async () => undefined, async (owner, session) => {
       if (mode !== 'verify') await session.send({ op: 'control', path: mode === 'history' ? '/api/history' : `/seed/${t}`, data: { locked: false } });
       const counterFile = join(store.root, 'locks', `${t}.counter.json`);

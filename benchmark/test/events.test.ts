@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Ownership } from '../src/ownership.js';
@@ -17,5 +17,7 @@ test('observations survive producer release; uncertain and stale actions cannot 
     await owner.release(true);
     assert.equal(observations(root).length, 1);
     assert.throws(() => appendObservation(owner, 1, 400), /ownership-lost/);
+    appendFileSync(join(root, 'events', 'observations.jsonl'), '{"partial":');
+    assert.throws(() => observations(root), /incomplete-observation-ledger/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
