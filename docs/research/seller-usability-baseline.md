@@ -161,3 +161,15 @@ fonts, packages or framework. The script only enhances native submission feedbac
 Build and both dashboard tests pass with asset/CSP checks. Reviewed actual desktop
 and 360px mobile completed-order screenshots under `test-20261028/task-08-order*.png`;
 mobile has no horizontal overflow. Raw timestamp/state wording is the next task.
+
+## Task 2.3: independent states and next actions
+
+Reservation, payment, fulfilment and order facts have separate visible labels.
+Backups show their rank and lack of reserved entitlement; proposals explicitly
+remain undelivered; approved fixture replies explicitly remain simulated. Payment
+evidence stays unverified, paid stays awaiting completion, posted stays awaiting
+receipt, and drop-off stays awaiting collection. MYR totals and readable MYT
+(UTC+08:00) deadlines are visible; terminal orders show a previous hold deadline.
+Build and all three dashboard tests pass, including actual evidence intake,
+backup state and paid intermediate-postage scenarios. Reviewed desktop/mobile
+order screenshots (`task-09-order*.png`). No trading transition rules changed.

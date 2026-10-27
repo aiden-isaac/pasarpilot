@@ -11,7 +11,7 @@
 
 - [x] 2.1 Refactor selected-view rendering into overview, inventory/WTS, conversations, orders/history and settings/help using existing forms/domain functions; add scoped contextual detail links, current-navigation indication and safe filtered return destinations; update existing dashboard test callers.
 - [x] 2.2 Serve a small fixed same-origin stylesheet/script with narrowly scoped CSP allowances; implement the shared shell, system typography, spacing/surface/status tokens, native controls, focus/press states and responsive rows using the apple-design references in design.md, with no new dependency.
-- [ ] 2.3 Render independent claim/reservation/response/payment/fulfilment states and concise next actions, with explicit synthetic labels, MYR totals, deadlines/timezones and empty states; verify paid/evidence/simulated-delivery and posted/collected distinctions in focused dashboard scenarios.
+- [x] 2.3 Render independent claim/reservation/response/payment/fulfilment states and concise next actions, with explicit synthetic labels, MYR totals, deadlines/timezones and empty states; verify paid/evidence/simulated-delivery and posted/collected distinctions in focused dashboard scenarios.
 - [ ] 2.4 Complete semantic labels/landmarks/skip navigation, 44 CSS px action targets, light/dark appearance and reduced-motion behavior; check contrast, keyboard focus, 320 CSS px reflow, 200% zoom and the declared desktop/mobile viewports with screenshots and existing Playwright assertions.
 
 ## 3. Add minimal invited-seller onboarding
