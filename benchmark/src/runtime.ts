@@ -28,6 +28,7 @@ export class Session {
   readonly child: ChildProcessWithoutNullStreams;
   readonly ready: Promise<Reply>;
   cgroup?: string;
+  private stopping?: Promise<boolean>;
   constructor(readonly owner: Ownership, capBytes: number, origin: string, headed = false) {
     const args = ['run', '--http-proxy=false', '-i', '--name', owner.lease.container,
       '--label', `${label}=true`, '--label', `io.pasarpilot.root=${rootLabel(owner.root)}`,
@@ -90,7 +91,8 @@ export class Session {
     this.cgroup = cgroupPath(this.owner.lease.container);
     if (!this.cgroup) throw Error('missing-attempt-cgroup');
   }
-  async stop(crash = false): Promise<boolean> {
+  stop(crash = false): Promise<boolean> { return this.stopping ??= this.stopOnce(crash); }
+  private async stopOnce(crash: boolean): Promise<boolean> {
     const name = this.owner.lease.container;
     if (!inspect(name).State.Running) return terminated(name, this.owner.root, this.cgroup);
     if (crash) podman(['kill', '--signal', 'KILL', name]);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { defaults } from './config.js';
-import { Ownership } from './ownership.js';
+import { Ownership, holdLock } from './ownership.js';
 import { Session } from './runtime.js';
 import { fixtureOrigin, podman } from './container.js';
 import { admit, sampleAttempt } from './metrics.js';
@@ -13,7 +13,9 @@ export async function smoke(root: string): Promise<void> {
   const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   const smokeId = String(Date.now());
   const smokeRoot = initialise(join(root, 'smoke', smokeId));
+  const controller = await holdLock(join(root, 'locks', 'supervisor.lock'));
   let counter = 0;
+  try {
   for (let i = 0; i < 2; i++) {
     admit(sampleHost(), defaults.capBytes, 0, 1, 0, manifest.poolBudget);
     const owner = await Ownership.acquire(smokeRoot, 'seller-a');
@@ -39,4 +41,5 @@ export async function smoke(root: string): Promise<void> {
       podman(['rm', owner.lease.container]);
     }
   }
+  } finally { controller.stdin.end(); }
 }

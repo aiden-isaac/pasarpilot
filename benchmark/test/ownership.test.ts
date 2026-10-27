@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { Ownership, assertLease } from '../src/ownership.js';
+import { writeJson } from '../src/storage.js';
 
 test('a profile lock outlives lease expiry and release requires proven termination', async () => {
   const root = mkdtempSync(join(tmpdir(), 'pasarpilot-owner-'));
@@ -17,5 +18,10 @@ test('a profile lock outlives lease expiry and release requires proven terminati
     const b = await Ownership.acquire(root, 'seller-a');
     assert.equal(b.lease.generation, a.lease.generation + 1);
     await b.release(true);
+    writeJson(b.statePath, { ...b.lease, state: 'monitoring', expires: Date.now() + 30_000 });
+    await assert.rejects(Ownership.acquire(root, 'seller-a'), /reconciliation/);
+    writeJson(b.statePath, { ...b.lease, state: 'stored' });
+    const c = await Ownership.acquire(root, 'seller-a');
+    await c.release(true);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

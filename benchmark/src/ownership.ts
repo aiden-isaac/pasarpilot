@@ -30,7 +30,8 @@ export class Ownership {
     const previous = existsSync(statePath) ? readLease(statePath) : undefined;
     // Expiration alone never proves the old container is dead: the caller must reconcile first.
     if (previous && previous.state !== 'stored' && previous.state !== 'reauth-required') {
-      lock.stdin.end(); throw Error('profile-needs-reconciliation');
+      await new Promise<void>(resolve => { lock.once('exit', () => resolve()); lock.stdin.end(); });
+      throw Error('profile-needs-reconciliation');
     }
     const attempt = randomUUID();
     const lease: Lease = { schemaVersion: 1, tenant, generation: (previous?.generation ?? 0) + 1,
