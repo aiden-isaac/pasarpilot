@@ -25,7 +25,7 @@
 - [x] 4.2 Implement row-locked global/listing allocation with full-quantity guards, order/hold snapshots, unique active claims and atomic event-result/proposal/activity writes; test rollback and competing allocations through two independent database connections and two listings sharing one unit.
 - [x] 4.3 Implement eligible backup ordering and guarded promotion, same-item automatic versus explicit cross-listing promotion, terminal/withdrawn exclusions and sold-out dispositions; test quantity fit, tie-breakers and no repeated promotion.
 - [x] 4.4 Implement database-time 15-minute holds, idempotent unpaid cancellation/release, expiry wake-ups plus startup/periodic/lazy sweeps, bounded seller extensions and transactional backup promotion; test downtime, repeated jobs, expired extensions and cancellation/expiry/allocation races.
-- [ ] 4.5 Add seller review actions for association, quantity/intent resolution, rejection, unpaid cancellation and explicit promotion with reasons/current versions; reuse the stock/price guards and test stale review, lost availability and no silent displacement of another valid hold.
+- [x] 4.5 Add seller review actions for association, quantity/intent resolution, rejection, unpaid cancellation and explicit promotion with reasons/current versions; reuse the stock/price guards and test stale review, lost availability and no silent displacement of another valid hold.
 
 ## 5. Add assisted responses negotiation and payment requests
 
