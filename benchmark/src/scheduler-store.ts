@@ -167,6 +167,10 @@ export class SchedulerStore {
     await this.check(job);
     await this.pool.query(`UPDATE ${this.schema}.attempt SET owner=$3 WHERE job=$1 AND delivery=$2 AND result IS NULL`, [job.id, job.retryCount, owner]);
   }
+  async uncertain(job: Claim) {
+    await this.check(job);
+    await this.pool.query(`UPDATE ${this.schema}.action SET outcome='uncertain' WHERE job=$1 AND outcome='queued'`, [job.id]);
+  }
   async finish(job: Claim, result: Outcome, now = Date.now(), recovering = false) {
     return this.transaction(async c => {
       const s = (await c.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1 FOR UPDATE`, [job.data.tenant])).rows[0]!;
@@ -175,6 +179,10 @@ export class SchedulerStore {
       if (!current || current.retry_count !== job.retryCount || (!recovering && current.state !== 'active')) throw Error('queue-ownership-lost');
       const blocked = result.error?.includes('persistence-or-isolation') ? 'persistence-or-isolation'
         : /^(reauth-required|history-unavailable|profile-counter-ambiguous)$/.test(result.error ?? '') ? result.error : undefined;
+      if (job.data.kind === 'action' && !['applied','rejected'].includes(result.outcome)) {
+        const action = (await c.query(`SELECT outcome FROM ${this.schema}.action WHERE job=$1`, [job.id])).rows[0];
+        if (action?.outcome === 'uncertain') result = { ...result, outcome: 'uncertain' };
+      }
       const delay = !recovering && !obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now) ? retryDelay(job.data, job.retryCount, result.error ?? '', now) : undefined;
       if (result.observation) await c.query(`INSERT INTO ${this.schema}.consumed(tenant,source_id,event) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`,
         [result.observation.tenant, result.observation.sourceId, result.observation]);

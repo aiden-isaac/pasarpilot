@@ -62,6 +62,24 @@ try {
         break;
       }
       await checkpoint();
+      if (command.op === 'state' || command.op === 'action-status' || command.op === 'action') {
+        assertAutomation(JSON.parse(readFileSync(leaseFile, 'utf8')));
+        if (command.op !== 'state' && (typeof command.actionId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(command.actionId))) throw Error('invalid-action-id');
+        const stateResponse = await context.request.get(`${origin}/api/state`);
+        if (stateResponse.status() === 401) throw Error('reauth-required');
+        if (stateResponse.status() !== 200) throw Error('fixture-unavailable');
+        const state = await stateResponse.json();
+        if (state.tenant !== expected.tenant) throw Error('isolation-failure');
+        if (!state.historyReady) throw Error('history-unavailable');
+        await checkpoint();
+        if (command.op === 'state') { console.log(JSON.stringify({ id: command.id, ...state })); continue; }
+        if (command.op === 'action' && command.expectedRevision !== state.revision) throw Error('stale-action');
+        const response = command.op === 'action-status'
+          ? await context.request.get(`${origin}/api/actions/${command.actionId}`)
+          : await context.request.post(`${origin}/api/action`, { data: { id: command.actionId, revision: command.expectedRevision } });
+        await checkpoint();
+        console.log(JSON.stringify({ id: command.id, status: response.status(), result: await response.json() })); continue;
+      }
       if (command.op === 'control') {
         if (typeof command.path !== 'string' || !/^\/(api\/(history|expire|action)|seed\/seller-[abc])$/.test(command.path)) throw Error('invalid-control-path');
         const response = await context.request.post(origin + command.path, { data: command.data });

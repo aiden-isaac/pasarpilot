@@ -105,7 +105,17 @@ export async function executeJob(store: SchedulerStore, job: Claim, manifest: Sc
       return { outcome: 'completed', observation, flushMs, startupMs: await session.ready.then(r => r.startupMs),
         restorationMs: reply.restorationMs, inspectionMs: reply.inspectionMs };
     }
-    throw Error('unsupported-job-kind');
+    await check();
+    const state = await session.send({ op: 'state' });
+    if (state.revision !== job.data.expectedRevision) return { outcome: 'rejected', error: 'stale-action' };
+    await store.uncertain(job);
+    const applied = actionGate(owner, job.data.actionId!, job.data.expectedRevision!, Number(state.revision));
+    await check();
+    try {
+      const reply = await session.send({ op: 'action', actionId: job.data.actionId, expectedRevision: job.data.expectedRevision });
+      if (reply.status !== 200) return { outcome: 'uncertain', error: 'action-acknowledgement-ambiguous' };
+      applied(); return { outcome: 'applied', actionResult: reply.result };
+    } catch (error) { return { outcome: 'uncertain', error: reason(error) }; }
   });
 }
 
@@ -213,6 +223,26 @@ export async function recoverTenant(store: SchedulerStore, value: string, mode: 
     });
     if (result.outcome !== 'verified') throw Error(result.error);
     await store.resume(t);
+    return result;
+  } finally { lock.stdin.end(); }
+}
+
+export async function reconcileAction(store: SchedulerStore, value: string, id: string, manifest: SchedulerManifest) {
+  const t = tenant(value); actionId(id);
+  const lock = await holdLock(join(store.root, 'locks', 'supervisor.lock'));
+  try {
+    await recoverJobs(store);
+    const action = (await store.pool.query(`SELECT * FROM ${store.schema}.action WHERE tenant=$1 AND id=$2`, [t, id])).rows[0];
+    if (!action || action.outcome !== 'uncertain') throw Error('uncertain-action-required');
+    const result = await ownedSession(store.root, t, manifest, Date.now() + 120_000, () => store.healthy(), async () => undefined, async (_owner, session) => {
+      const reply = await session.send({ op: 'action-status', actionId: id });
+      const status = reply.result as { applied?: boolean; revision?: number };
+      return reply.status === 200 && status.applied === true ? { outcome: 'applied', revision: status.revision } : { outcome: 'uncertain' };
+    });
+    if (result.outcome === 'applied') {
+      writeJson(join(store.root, 'events', `${t}-${id}.json`), { id, tenant: t, state: 'applied', ...result });
+      await store.pool.query(`UPDATE ${store.schema}.action SET outcome='applied',result=$3 WHERE tenant=$1 AND id=$2 AND outcome='uncertain'`, [t, id, result]);
+    }
     return result;
   } finally { lock.stdin.end(); }
 }

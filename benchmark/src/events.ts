@@ -37,8 +37,9 @@ export function actionGate(owner: Ownership, id: string, expectedRevision: numbe
   owner.check();
   if (!/^[a-zA-Z0-9-]{1,64}$/.test(id)) throw Error('invalid-action-id');
   if (expectedRevision !== currentRevision) throw Error('stale-action');
-  const path = join(owner.root, 'events', `${id}.json`);
-  if (existsSync(path)) throw Error('action-needs-reconciliation');
+  const path = join(owner.root, 'events', `${owner.lease.tenant}-${id}.json`);
+  // Preserve uncertainty from benchmark datasets written before action IDs were tenant-scoped.
+  if (existsSync(path) || existsSync(join(owner.root, 'events', `${id}.json`))) throw Error('action-needs-reconciliation');
   // Persist uncertainty before external work: a crash must never turn into a blind retry.
   writeJson(path, { id, state: 'uncertain', tenant: owner.lease.tenant, revision: currentRevision });
   return () => writeJson(path, { id, state: 'applied', tenant: owner.lease.tenant, revision: currentRevision });
