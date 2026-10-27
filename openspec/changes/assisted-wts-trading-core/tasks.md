@@ -1,7 +1,7 @@
 ## 1. Establish the application boundary and schema
 
 - [x] 1.1 Add the smallest trading entry point/module layout and separate unit/database/dashboard test commands in the existing TypeScript workspace; retain pinned packages and existing benchmark/scheduler commands without introducing another service stack.
-- [ ] 1.2 Add versioned trading schema migrations with seller-consistent composite keys, stock/quantity/price constraints, unique event/claim/delivery identities, orders/reservations, conversations/reviews and transactional activity records; provide a restricted runtime database role and non-destructive schema/version checks.
+- [x] 1.2 Add versioned trading schema migrations with seller-consistent composite keys, stock/quantity/price constraints, unique event/claim/delivery identities, orders/reservations, conversations/reviews and transactional activity records; provide a restricted runtime database role and non-destructive schema/version checks.
 - [ ] 1.3 Implement validated MYR-sen/quantity parsing, checked arithmetic and agreement snapshot helpers; test fractional sen, negative values, overflow, variant distinctions and immutable order totals.
 - [ ] 1.4 Add an explicit operator setup/seed command for two isolated seller accounts, synthetic actors/source epochs and fixture-tenant mappings; accept passwords securely without arguments/logging/Git and create a fresh private demo dataset.
 
