@@ -15,3 +15,21 @@ export async function inventory(w:Workspace,card:Card,id:string=randomUUID(),ver
   await activity(c,w.seller,'inventory_saved',id,r.rows[0].version);
  });return id;
 }
+export async function listing(w:Workspace,title:string,id:string=randomUUID(),version?:number,open=true) {
+ await tx(w.p,async c=>{
+  const r=version===undefined?await c.query('INSERT INTO trading.listings(seller_id,id,title) VALUES($1,$2,$3) RETURNING version',[w.seller,id,text(title)]):
+   await c.query('UPDATE trading.listings SET title=$3,open=$4,version=version+1 WHERE seller_id=$1 AND id=$2 AND version=$5 RETURNING version',[w.seller,id,text(title),open,integer(version,1)]);
+  if(!r.rowCount) throw Error('stale-or-not-found'); await activity(c,w.seller,'listing_saved',id,r.rows[0].version);
+ });return id;
+}
+export async function item(w:Workspace,listingId:string,inventoryId:string,offered:number,id:string=randomUUID(),version?:number,open=true) {
+ integer(offered,1);
+ await tx(w.p,async c=>{
+  const inv=(await c.query('SELECT * FROM trading.inventory WHERE seller_id=$1 AND id=$2 FOR UPDATE',[w.seller,inventoryId])).rows[0];
+  const parent=(await c.query('SELECT * FROM trading.listings WHERE seller_id=$1 AND id=$2 FOR UPDATE',[w.seller,listingId])).rows[0];
+  if(!inv||!parent) throw Error('not-found');
+  const r=version===undefined?await c.query('INSERT INTO trading.items(seller_id,id,listing_id,inventory_id,offered,price) VALUES($1,$2,$3,$4,$5,$6) RETURNING version',[w.seller,id,listingId,inventoryId,offered,inv.price]):
+   await c.query('UPDATE trading.items SET offered=$3,open=$4,version=version+1 WHERE seller_id=$1 AND id=$2 AND version=$5 AND inventory_id=$6 AND listing_id=$7 AND allocated<=$3 RETURNING version',[w.seller,id,offered,open,integer(version,1),inventoryId,listingId]);
+  if(!r.rowCount) throw Error('stale-or-held-listing-conflict'); await activity(c,w.seller,'item_saved',id,r.rows[0].version);
+ });return id;
+}
