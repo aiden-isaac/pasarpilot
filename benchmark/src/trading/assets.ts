@@ -1,7 +1,7 @@
 export const stylesheet=`
 :root{color-scheme:light dark;--page:#f5f5f7;--surface:#fff;--text:#202124;--secondary:#606068;--line:#d8d8de;--control:#85858d;--accent:#0058c7;--accent-text:#fff;--tint:#e8f0fc;--danger:#a82028;--warning:#805000;--success:#17643b;--s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s6:1.5rem;--s8:2rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:100%;line-height:1.5;background:var(--page);color:var(--text)}
 @media(prefers-color-scheme:dark){:root{--page:#161618;--surface:#242426;--text:#f2f2f5;--secondary:#b5b5bf;--line:#44444c;--control:#878791;--accent:#91bfff;--accent-text:#102744;--tint:#213651;--danger:#ff9da2;--warning:#f5ca7e;--success:#8cd7ac}}
-*{box-sizing:border-box}body{margin:0}a{display:inline-block;min-height:2.75rem;min-width:2.75rem;max-width:100%;padding-block:.625rem;color:var(--accent);text-underline-offset:.2em;overflow-wrap:anywhere}a:hover{text-decoration-thickness:.12em}a:active,button:active{filter:brightness(.86)}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}a{display:inline-block;min-height:2.75rem;min-width:2.75rem;max-width:100%;padding-block:.625rem;color:var(--accent);text-underline-offset:.2em;overflow-wrap:anywhere}a:hover{text-decoration-thickness:.12em}a:active,button:active{filter:brightness(.86)}
 .brand,main{max-width:82rem;margin:auto;padding:var(--s6) var(--s8)}.brand{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s4);border-bottom:1px solid var(--line)}.brand h1{font-size:1.375rem;letter-spacing:-.035em;margin:0}.brand h1 a{color:var(--text);text-decoration:none}.environment,.status{display:inline-block;border:1px solid var(--line);border-radius:1rem;padding:var(--s1) var(--s3);font-size:.875rem;font-weight:600}.environment{color:var(--secondary)}
 h1,h2,h3,h4,p,label,summary,button{overflow-wrap:anywhere}h2{font-size:1.875rem;line-height:1.2;letter-spacing:-.035em;margin:0 0 var(--s4)}h3{font-size:1.125rem;line-height:1.4;margin:0 0 var(--s2)}h4{font-size:1rem}p{margin:var(--s2) 0 var(--s4)}.eyebrow{font-size:.875rem;font-weight:600;letter-spacing:.03em;color:var(--secondary);margin:0}.workspace-header>p:last-child{color:var(--secondary)}
 .session-actions{display:flex;justify-content:flex-end}.session-actions form{margin:0 0 var(--s4);padding:0;border:0;background:none}.workspace{display:grid;grid-template-columns:12rem minmax(0,1fr);column-gap:var(--s8)}.workspace-header{grid-column:2}.primary-nav{grid-column:1;grid-row:1 / span 2;align-self:start;display:flex;flex-direction:column;gap:var(--s2)}.primary-nav a{display:flex;align-items:center;min-height:2.75rem;padding:var(--s2) var(--s3);border-radius:.625rem;color:var(--secondary);text-decoration:none;font-weight:500}.primary-nav a:hover{background:var(--surface);color:var(--text)}.primary-nav a[aria-current]{background:var(--tint);color:var(--accent);font-weight:650}.workspace-content{grid-column:2;min-width:0}.workspace-content>h2{margin-top:var(--s4)}
@@ -24,4 +24,30 @@ document.addEventListener('submit',event=>{
 addEventListener('pageshow',()=>{
  for(const form of document.querySelectorAll('form[aria-busy]')){form.removeAttribute('aria-busy');for(const button of form.querySelectorAll('button'))button.disabled=false;form.querySelector('[data-pending]')?.remove();}
 });
+const freshness=document.getElementById('freshness');
+if(freshness){
+ let timer,flight=false,stopped=false,delay=10000,lastSignature=null;
+ const status=document.getElementById('freshness-alert'),checked=document.getElementById('freshness-time');
+ const schedule=()=>{clearTimeout(timer);if(!document.hidden&&!stopped)timer=setTimeout(check,delay);};
+ const check=async()=>{
+  if(document.hidden||flight||stopped)return;
+  flight=true;const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),8000);
+  try{
+   const response=await fetch('/updates',{credentials:'same-origin',cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
+   if(response.status===401){stopped=true;status.textContent='Your session expired or was revoked. Sign in again, then inspect current state.';document.getElementById('freshness-login').hidden=false;return;}
+   if(!response.ok)throw Error('check-unavailable');
+   const data=await response.json();if(document.hidden)return;
+   const signature=JSON.stringify([data.recent.map(row=>row.id),data.attention.map(row=>[row.kind,row.id,row.version])]);
+   status.textContent=lastSignature!==null&&lastSignature!==signature?'Recent local activity changed. Refresh this view when ready.':'Local check succeeded. Refresh this view when ready to inspect the latest state.';
+   lastSignature=signature;
+   checked.textContent='Last successful local check: '+new Intl.DateTimeFormat('en-MY',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kuala_Lumpur'}).format(new Date(data.checkedAt))+' MYT (UTC+08:00)';
+   const names={review:'Seller review',response:'Proposed response',payment:'Awaiting payment',fulfilment:'Awaiting fulfilment'};
+   document.getElementById('attention-check').textContent=Object.entries(names).map(([kind,name])=>name+': '+data.attention.filter(row=>row.kind===kind).length+' in this bounded check').join(' · ');
+   const rows=data.recent.slice(0,5).map(row=>{const li=document.createElement('li');li.textContent=row.action.replaceAll('_',' ')+' · '+row.actor;return li;});document.getElementById('recent-check').replaceChildren(...rows);delay=10000;
+  }catch{if(!document.hidden)status.textContent='Could not check local data. Shown information may be stale; inspect again when connected.';delay=Math.min(delay*2,60000);}
+  finally{clearTimeout(deadline);flight=false;schedule();}
+ };
+ document.addEventListener('visibilitychange',schedule);schedule();
+}
+
 `;

@@ -29,7 +29,7 @@
 ## 5. Add bounded activity updates
 
 - [x] 5.1 Add an authenticated read-only recent-activity/attention endpoint with bounded queries and no private message/address/instruction bodies; test tenant isolation, revoked sessions, input bounds and out-of-order activity commits without treating an identity watermark as complete history.
-- [ ] 5.2 Add visible-tab checks every 10 seconds, single in-flight request, hidden-tab pause and bounded error backoff; show freshness/relogin/degraded feedback and test that updates preserve in-progress forms, versions, focus, selection and scroll, including reduced motion and manual no-JS refresh.
+- [x] 5.2 Add visible-tab checks every 10 seconds, single in-flight request, hidden-tab pause and bounded error backoff; show freshness/relogin/degraded feedback and test that updates preserve in-progress forms, versions, focus, selection and scroll, including reduced motion and manual no-JS refresh.
 
 ## 6. Make the demonstration repeatable through existing trading paths
 

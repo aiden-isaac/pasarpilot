@@ -270,3 +270,16 @@ rejected. No-store remains set. The focused real-HTTP/database test passes
 foreign seller/private payload exclusion and a two-connection out-of-order
 identity commit: each check re-reads the bounded window and discovers the lower
 identity after its later commit, without treating a maximum ID as complete history.
+
+## Task 5.2: non-disruptive visible-tab freshness
+
+A read-only footer checks every 10 seconds while visible, with one fetch, an
+8-second request timeout, hidden-tab pause and 20/40/60-second error backoff.
+Revocation stops checks and exposes relogin. It updates bounded text summaries
+only, labels local freshness honestly and provides explicit current-view refresh;
+no forms, versions, selection, focus, scroll or browser storage are replaced.
+All nine dashboard tests pass (`task-18-dashboard.txt`). Controlled browser-clock
+checks prove initial cadence, hidden pause, one in-flight request, capped backoff,
+relogin stop and exact editing/focus/selection/scroll preservation under reduced
+motion. The no-JS sale retains manual navigation/refresh. Reviewed mobile
+`appearance/freshness-relogin.png`; summary bodies contain no private text.
