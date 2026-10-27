@@ -41,7 +41,12 @@ test('authenticated seller creates variant and post, completes one RM10 sale wit
  assert.equal((await p.query('SELECT state FROM trading.orders WHERE seller_id=$1 AND id=$2',[a.seller_id,o.id])).rows[0].state,'completed');
  assert.equal((await p.query("SELECT count(*)::int AS n FROM trading.orders WHERE seller_id=$1 AND item_id=$2 AND payment='seller_verified'",[a.seller_id,it])).rows[0].n,1);
  assert.equal((await p.query('SELECT unsold FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].unsold,0);
- if(process.env.TRADING_SCREENSHOT)await page.screenshot({path:process.env.TRADING_SCREENSHOT,fullPage:true});
+ if(process.env.TRADING_SCREENSHOT){
+  await page.screenshot({path:process.env.TRADING_SCREENSHOT,fullPage:true});
+  await page.setViewportSize({width:360,height:800});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:process.env.TRADING_SCREENSHOT.replace('.png','-mobile.png'),fullPage:true});
+ }
  assert.equal((await p.query('SELECT reserved FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].reserved,0);
  }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
 });

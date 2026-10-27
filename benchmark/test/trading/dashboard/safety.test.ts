@@ -15,6 +15,10 @@ test('authenticated HTTP boundary rejects foreign IDs forged origin CSRF and sta
  const s=await login(p,a.tenant,password),app=await listen(p,0,mutate,view),addr=app.address();assert.ok(addr&&typeof addr!=='string');const base=`http://127.0.0.1:${addr.port}`;
  const post=(path:string,data:Record<string,string>,origin=base)=>fetch(base+path,{method:'POST',redirect:'manual',headers:{cookie:`session=${s.token}`,origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:s.csrf,...data})});
  try{
+ for(const asset of ['workspace.css','workspace.js']){
+  const response=await fetch(base+'/assets/'+asset);assert.equal(response.status,200);assert.match(response.headers.get('content-type')!,asset.endsWith('css')?/text\/css/:/text\/javascript/);
+  const csp=response.headers.get('content-security-policy')!;assert.ok(csp.includes("default-src 'none'"));assert.ok(!csp.includes('unsafe-inline'));assert.ok(!csp.includes('https:'));
+ }
  const key=id(),card={name:'<script>syntheticUnsafe()</script>',printing:'SYN',collector:'1',language:'English',finish:'nonfoil',condition:'NM',unsold:1,price:1000};await inventory(wa,card,key);await inventory(wb,{...card,name:'PRIVATE-SELLER-B'},key);
  const html=await (await fetch(base+'/?view=inventory&id='+key,{headers:{cookie:`session=${s.token}`}})).text();assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>syntheticUnsafe'));assert.ok(!html.includes('PRIVATE-SELLER-B'));
  const order=await payable(wb);assert.equal((await post('/cancel',{id:order.order,version:'2',reason:'forged',seller_id:b.seller_id})).status,409);assert.equal((await wb.get('orders',order.order)).state,'awaiting_payment');

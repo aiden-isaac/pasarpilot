@@ -143,3 +143,21 @@ and 360×800 found and fixed search results reopening inside a closed disclosure
 Navigation spacing/visual polish continues in 2.2. Private screenshots:
 `demo-20261028/task-07-{desktop,mobile}.png`. DevTools connection timed out;
 Playwright used a separate sandboxed Brave process, never existing browser tabs.
+
+## Task 2.2: shared visual shell
+
+Loaded the installed service README and fetched Apple guidance for
+[Sidebars](https://developer.apple.com/design/human-interface-guidelines/sidebars),
+[Typography](https://developer.apple.com/design/human-interface-guidelines/typography),
+[Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons),
+[Feedback](https://developer.apple.com/design/human-interface-guidelines/feedback),
+[Motion](https://developer.apple.com/design/human-interface-guidelines/motion),
+[Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility)
+and [Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode).
+Applied hierarchy, progressive disclosure, system fonts, relative spacing, native
+controls, restrained surfaces, press/focus feedback and adaptive navigation.
+Fixed CSS/JS assets use same-origin CSP allowances without inline scripts/styles,
+fonts, packages or framework. The script only enhances native submission feedback.
+Build and both dashboard tests pass with asset/CSP checks. Reviewed actual desktop
+and 360px mobile completed-order screenshots under `test-20261028/task-08-order*.png`;
+mobile has no horizontal overflow. Raw timestamp/state wording is the next task.
