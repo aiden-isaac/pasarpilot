@@ -17,7 +17,7 @@
 - [x] 3.1 Define/validate the trading envelope and implement atomic inbox plus application-queue wake-up, stable event/revision/content deduplication and a direct synthetic generator; test duplicate intake, conflicting identities, malformed/foreign events and transaction rollback.
 - [x] 3.2 Implement durable source cursors and ordered processing with gap/missing-parent deferral, edited/deleted acted-on source review and idempotent restart; test claim position two arriving before one without awarding incorrect priority.
 - [x] 3.3 Persist messages/conversations and associate buyer inquiries through stable actors and item/thread mappings; expose unresolved associations and verify that unrelated/ambiguous text creates no stock or payment effect.
-- [ ] 3.4 Add deterministic template/rule helpers for claim acknowledgement, backups, clarification, price responses, payment and fulfilment; test stable outputs and explicit unsupported-context escalation without an LLM.
+- [x] 3.4 Add deterministic template/rule helpers for claim acknowledgement, backups, clarification, price responses, payment and fulfilment; test stable outputs and explicit unsupported-context escalation without an LLM.
 
 ## 4. Implement atomic claims reservations and review
 
