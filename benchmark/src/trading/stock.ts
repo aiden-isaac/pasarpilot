@@ -47,3 +47,21 @@ export const handle:Handler=async(c,s,id,ev)=>{
  if(parsed.kind==='inquiry') return 'inquiry';
  return allocate(c,s,{id,item:ev.item!,buyer:ev.actor,conversation:conv.id,quantity:parsed.quantity,position:ev.position!,kind:parsed.kind,source:id});
 };
+export async function promote(c:Client,s:string,itemId:string,claimId?:string) {
+ const {inv,post,item}=await lockItem(c,s,itemId);
+ if(!post.open||!item.open) return;
+ const candidates=(await c.query("SELECT * FROM trading.claims WHERE seller_id=$1 AND item_id=$2 AND state='backup' AND ($3::text IS NULL OR id=$3) ORDER BY position,id",[s,itemId,claimId??null])).rows;
+ for(const claim of candidates) {
+  if(claim.quantity>inv.unsold-inv.reserved||claim.quantity>item.offered-item.allocated) continue;
+  if((await c.query("SELECT 1 FROM trading.orders WHERE seller_id=$1 AND item_id=$2 AND buyer=$3 AND state IN ('awaiting_payment','paid')",[s,itemId,claim.buyer])).rowCount) continue;
+  return allocate(c,s,{id:claim.id,item:itemId,buyer:claim.buyer,conversation:claim.conversation_id,quantity:claim.quantity,position:claim.position,kind:'claim'});
+ }
+}
+export async function settleBackups(c:Client,s:string,itemId:string) {
+ const {inv,item}=await lockItem(c,s,itemId);
+ const held=(await c.query("SELECT 1 FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.item_id=$2 AND r.state='held'",[s,itemId])).rowCount;
+ if(!held && (inv.unsold===0||item.allocated===item.offered)) {
+  const rows=(await c.query("UPDATE trading.claims SET state='unfulfilled',version=version+1 WHERE seller_id=$1 AND item_id=$2 AND state='backup' RETURNING id,version",[s,itemId])).rows;
+  for(const r of rows) await activity(c,s,'backup_unfulfilled',r.id,r.version,'rules','sold out');
+ }
+}
