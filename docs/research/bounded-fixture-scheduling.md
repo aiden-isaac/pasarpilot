@@ -72,3 +72,30 @@ shared/file memory and scheduler RSS is not unique physical memory. Its 147.56 M
 baseline, with the queue client/supervisor lock and database resident, retained 6.137 GiB minimum
 available and a 3.572 GiB pool budget; concurrent service memory peaked at 90.69 MiB. No cache
 eviction or unrelated-service changes were used.
+
+## Recovery and correctness evidence
+
+The final prepared-host suite passed 16 separately recorded cases:
+
+1. Seed three profiles and establish cleanly flushed state.
+2. Coalesce bursts, enforce six logical jobs and demonstrate fair turns under action overload.
+3. Cancel an active attempt before its next browser operation.
+4. Change a schedule revision during execution and fence the next operation.
+5. Kill a supervisor immediately after claiming a job.
+6. Kill a supervisor after observation flush and replay without another browser observation.
+7. Kill a supervisor after browser release but before queue acknowledgement.
+8. Expire a claim and profile lease with a surviving stopped worker/browser; reject replacement
+   ownership, force cleanup after the grace period and verify termination.
+9. Block unavailable history until explicit validated recovery.
+10. Block expired authentication until explicit synthetic recovery.
+11. Reject an obsolete source revision before sending.
+12. Reconcile lost action acknowledgement from positive tenant-scoped evidence without resending.
+13. Retain action uncertainty and reject an additional action for that tenant.
+14. Stop PostgreSQL during an admitted visit, clean up locally, restart it and settle before new work.
+15. Restart the fixture, lose action evidence and retain uncertainty without authorising a resend.
+16. Retain a truncated ledger and reject incomplete evidence.
+
+The survivor case required the expected forced kill after the 15-second graceful-stop window and
+took 17.9 seconds overall. Cleanup preceded replacement ownership. The successful fault dataset
+has no unsettled attempts or queued jobs; its remaining uncertain action is explicitly recorded.
+Prior failed fault data and deliberately interrupted attempts remain retained separately.
