@@ -1,7 +1,7 @@
 ## 1. Establish additive data and query changes
 
 - [x] 1.1 Confirm callers of workspace/history/view/mutation and synthetic-generator functions, existing tests and protected scheduler contracts; record a baseline checklist and explicit private demo/test dataset paths without changing shared services.
-- [ ] 1.2 Extend versioned migrations/schema checks for bounded display name, independent profile version and chronological order browsing where needed; safely backfill existing rows and test fresh setup plus version-1/2 upgrades preserving source identities, sessions and held/paid/completed records.
+- [x] 1.2 Extend versioned migrations/schema checks for bounded display name, independent profile version and chronological order browsing where needed; safely backfill existing rows and test fresh setup plus version-1/2 upgrades preserving source identities, sessions and held/paid/completed records.
 - [ ] 1.3 Probe runtime-role grants; prevent business/scheduler DDL, migration writes and audit UPDATE/DELETE while preserving required pg-boss queue permissions. Add focused role assertions and verify the provisioning role is absent from normal serving.
 - [ ] 1.4 Add validated seller-scoped keyset pages and allowlisted filters to existing workspace/order-history reads (default 25, maximum 100, one continuation row); test complete traversal, filter/cursor failures and colliding/foreign seller IDs.
 - [ ] 1.5 Bound detail children, messages, drafts, claims/backups, timelines and shared-instruction snapshots with SQL joins/EXISTS; eliminate full draft-reference arrays and test long histories without changing backup rank or snapshot visibility.

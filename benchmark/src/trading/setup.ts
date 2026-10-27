@@ -10,7 +10,7 @@ export async function seed(p: pg.Pool, passwords: string[]) {
   const ids=[randomUUID(),randomUUID()];
   for(let i=0;i<2;i++) {
    const tenant=['seller-a','seller-b'][i]!;
-   await c.query('INSERT INTO trading.sellers(id,login,password_hash) VALUES($1,$2,$3)',[ids[i],tenant,hashes[i]]);
+   await c.query('INSERT INTO trading.sellers(id,login,password_hash,display_name) VALUES($1,$2,$3,$2)',[ids[i],tenant,hashes[i]]);
    await c.query('INSERT INTO trading.sources(tenant,seller_id,source,epoch) VALUES($1,$2,\'synthetic\',$3)',[tenant,ids[i],randomUUID()]);
    for(const actor of ['buyer-a','buyer-b']) await c.query('INSERT INTO trading.actors VALUES($1,$2)',[ids[i],actor]);
   }

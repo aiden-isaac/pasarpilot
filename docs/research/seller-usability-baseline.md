@@ -79,3 +79,13 @@ Rendered inspection is required before frontend task completion.
 
 No historical measurement is claimed as evidence for this milestone. Meta
 authorization and public/production access remain unresolved.
+
+## Task 1.2: additive schema
+
+Schema 3 adds 1–80-character display names (existing login default), independent
+profile version 1, and order `created_at`. Legacy dates use earliest attributable
+order activity; absent activity explicitly falls back to migration transaction time.
+New orders use database `now()`. No UUID-derived historical time is invented.
+TypeScript and all 29 trading database tests pass, including fresh setup and
+separate disposable v1/v2 upgrade simulations with retained credentials, sources,
+sessions, holds, agreement snapshots and paid/completed state (`task-02.txt`).

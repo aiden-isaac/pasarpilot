@@ -3,11 +3,31 @@ import type pg from 'pg';
 async function upgrade(c:Client){
  await c.query(`ALTER TABLE trading.orders ADD CONSTRAINT known_total CHECK((fee IS NULL AND total IS NULL) OR (fee IS NOT NULL AND total IS NOT NULL AND total=quantity::bigint*unit_price+fee)); INSERT INTO trading.migrations(version) VALUES(2);`);
 }
+async function profileUpgrade(c:Client){
+ await c.query(`
+ALTER TABLE trading.sellers ADD COLUMN display_name text;
+UPDATE trading.sellers SET display_name=left(login,80);
+ALTER TABLE trading.sellers ALTER COLUMN display_name SET NOT NULL;
+ALTER TABLE trading.sellers ADD CONSTRAINT bounded_display_name CHECK(char_length(btrim(display_name)) BETWEEN 1 AND 80);
+ALTER TABLE trading.sellers ADD COLUMN profile_version int NOT NULL DEFAULT 1 CHECK(profile_version>0);
+ALTER TABLE trading.orders ADD COLUMN created_at timestamptz;
+UPDATE trading.orders o SET created_at=COALESCE((SELECT min(a.created_at) FROM trading.activity a WHERE a.seller_id=o.seller_id AND a.record_id=o.id),transaction_timestamp());
+ALTER TABLE trading.orders ALTER COLUMN created_at SET DEFAULT now();
+ALTER TABLE trading.orders ALTER COLUMN created_at SET NOT NULL;
+INSERT INTO trading.migrations(version) VALUES(3);
+`);
+}
 export async function migrate(p: pg.Pool) {
   await tx(p, async c => {
     await c.query("SELECT pg_advisory_xact_lock(hashtext('trading-migration'))");
     const exists = (await c.query("SELECT to_regclass('trading.migrations') AS t")).rows[0].t;
-    if (exists) { const versions=(await c.query('SELECT version FROM trading.migrations ORDER BY version')).rows.map(r=>r.version);if(JSON.stringify(versions)==='[1]')await upgrade(c);else if(JSON.stringify(versions)!=='[1,2]')throw Error('incompatible-trading-schema');return; }
+    if (exists) {
+      const versions=(await c.query('SELECT version FROM trading.migrations ORDER BY version')).rows.map(r=>r.version);
+      if(!['[1]','[1,2]','[1,2,3]'].includes(JSON.stringify(versions)))throw Error('incompatible-trading-schema');
+      if(versions.length===1)await upgrade(c);
+      if(versions.length<3)await profileUpgrade(c);
+      return;
+    }
     await c.query(`
 CREATE SCHEMA trading;
 CREATE TABLE trading.migrations(version int PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
@@ -87,6 +107,7 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA trading TO trading_runtime;
 CREATE SCHEMA IF NOT EXISTS trading_queue AUTHORIZATION trading_runtime;
 `);
     await upgrade(c);
+    await profileUpgrade(c);
   });
   const b = queue(p); try { await b.start(); for (const name of ['inbox','expiry']) await b.createQueue(name); }
   finally { await b.stop(); }

@@ -1,7 +1,7 @@
 import pg, { type PoolClient } from 'pg';
 import PgBoss from 'pg-boss';
 export type Client = PoolClient;
-export const schemaVersion = 2;
+export const schemaVersion = 3;
 export function pool(user = 'trading_runtime') {
   if (!process.env.PGHOST?.startsWith('/')) throw Error('explicit-private-PGHOST-required');
   return new pg.Pool({ host: process.env.PGHOST, database: 'fixture', user, max: 3,
