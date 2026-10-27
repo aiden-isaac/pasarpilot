@@ -5,6 +5,7 @@ import { integer,snapshot,total } from './values.js';
 import { response } from './rules.js';
 import { review,type Handler } from './consumer.js';
 import { conversation } from './conversation.js';
+import { offer } from './negotiation.js';
 import { classify } from './claims.js';
 export async function lockItem(c:Client,s:string,item:string) {
  const ref=(await c.query('SELECT inventory_id,listing_id FROM trading.items WHERE seller_id=$1 AND id=$2',[s,item])).rows[0];
@@ -47,6 +48,7 @@ export async function allocate(c:Client,s:string,r:ClaimRequest,price?:number) {
 }
 export const handle:Handler=async(c,s,id,ev)=>{
  const conv=await conversation(c,s,id,ev),parsed=await classify(c,s,ev);
+ if(ev.kind==='offer') return offer(c,s,id,ev,conv.id);
  if(ev.kind==='payment_evidence') {await review(c,s,id,'buyer payment evidence remains unverified');return 'unverified';}
  if(!conv.item_id||parsed.kind==='review'){await review(c,s,id,'claim needs explicit interpretation');return 'review';}
  if(parsed.kind==='inquiry') return 'inquiry';

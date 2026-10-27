@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { activity,tx,type Client } from './db.js';
 import { Workspace } from './workspace.js';
+import { acceptOffer } from './negotiation.js';
 import { integer } from './values.js';
 import { lockItem,reconcileInventory } from './stock.js';
 export async function blocked(c:Client,s:string,order:string) {
@@ -36,6 +37,7 @@ export async function approve(w:Workspace,id:string,version:number) {
   if(d.order_id){const o=(await c.query('SELECT o.state,r.state AS hold,r.expires_at>clock_timestamp() AS live FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.id=$2 FOR UPDATE OF o,r',[w.seller,d.order_id])).rows[0];
    stale ||= await blocked(c,w.seller,d.order_id) || (o.state==='awaiting_payment' && (!o.live||o.hold!=='held')) || ['cancelled','expired'].includes(o.state);
   }
+  if(!stale && d.kind==='offer'){ const order=await acceptOffer(c,w.seller,d); if(!order) stale=true; else { d.order_id=order; await c.query('UPDATE trading.drafts SET order_id=$3 WHERE seller_id=$1 AND id=$2',[w.seller,id,order]); } }
   if(stale){await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND id=$2",[w.seller,id]);return 'stale';}
   await c.query('INSERT INTO trading.deliveries(seller_id,id) VALUES($1,$2)',[w.seller,id]);
   await c.query("INSERT INTO trading.messages(seller_id,id,conversation_id,text,direction) VALUES($1,$2,$3,$4,'out')",[w.seller,id,d.conversation_id,d.text]);
