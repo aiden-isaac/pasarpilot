@@ -51,3 +51,8 @@ must use that declared cadence: `node dist/src/cli.js continuous DATA 100 CADENC
 with the same parameters. `pilot DATA 3 0` is a separate three-profile instrumentation check.
 `settle DATA` collects a five-minute post-shutdown sample. Arm A includes a five-minute idle segment.
 Use a freshly captured baseline after runtime changes; never interpret fixture timings as Facebook latency.
+
+`faults DATA` runs the separate synthetic recovery suite. It retains failed datasets, first flushes
+seed state through clean shutdown, then tests five abrupt crashes against that committed baseline.
+It also tests expired ownership, supervisor reconciliation, cancellation, authentication/history
+recovery and uncertain actions. This does not assert durability of arbitrary in-flight browser writes.

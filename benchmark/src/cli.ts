@@ -19,6 +19,7 @@ if (command === 'baseline' && dataRoot) {
   const manifest = { schemaVersion: 1, created: new Date().toISOString(), defaults, cadenceMs,
     revision: process.env.BENCH_REVISION ?? 'unrecorded', node: process.version,
     runtime: podman(['--version']), image: inspect('localhost/pasarpilot-benchmark:v1').Id,
+    fixtureImage: inspect('pasarpilot-fixture').Image,
     fixtureOrigin: origin, hostSamples: samples, poolBudget: budget(samples),
     guard: guardBytes(samples[0]!.total), futureReserve: defaults.futureReserve,
     cpuLimit: 2, swapAllowed: false, sampleMs: 1000, minecraftStopped: true,
@@ -27,6 +28,8 @@ if (command === 'baseline' && dataRoot) {
   console.log(JSON.stringify({ baseline: 'complete', poolBudget: manifest.poolBudget, samples: samples.length }));
 } else if (command === 'smoke' && dataRoot) {
   await (await import('./smoke.js')).smoke(initialise(dataRoot));
+} else if (command === 'faults' && dataRoot) {
+  await (await import('./faults.js')).faults(initialise(dataRoot));
 } else if (['pilot', 'continuous', 'rotation'].includes(command ?? '') && dataRoot) {
   await (await import('./runner.js')).run(initialise(dataRoot), command as 'pilot' | 'continuous' | 'rotation',
     Number(process.argv[4] ?? (command === 'pilot' ? 3 : 100)), Number(process.argv[5] ?? defaults.cadenceMs));

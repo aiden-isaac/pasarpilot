@@ -65,7 +65,7 @@ export function fixture(): Server {
       }
       if (path === '/fixture.js' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
-        res.end(`window.fixtureStorage = async (tenant, expected, seed) => {
+        res.end(`window.fixtureStorage = async (tenant, expected, seed, inspectOnly = false) => {
           const db = await new Promise((resolve, reject) => {
             const r = indexedDB.open('synthetic-state', 1);
             r.onupgradeneeded = () => r.result.createObjectStore('state');
@@ -80,9 +80,10 @@ export function fixture(): Server {
           if (seed ? (marker !== undefined || localStorage.getItem('tenant') !== null) :
             (marker !== tenant || localStorage.getItem('tenant') !== tenant || count !== expected ||
              localStorage.getItem('counter') !== String(expected))) throw Error('persistence-or-isolation');
+          if (inspectOnly && !seed) { db.close(); return expected; }
           const next = seed ? 0 : expected + 1;
           await new Promise((resolve, reject) => {
-            const tx = db.transaction('state', 'readwrite');
+            const tx = db.transaction('state', 'readwrite', { durability: 'strict' });
             tx.objectStore('state').put(tenant, 'tenant'); tx.objectStore('state').put(next, 'counter');
             tx.oncomplete = resolve; tx.onerror = () => reject(Error('indexeddb-write'));
           });

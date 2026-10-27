@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { assertLease, type Lease } from './ownership.js';
 import { verifySandbox } from './sandbox.js';
+import { sampleAttempt } from './metrics.js';
 
 const leaseFile = '/attempt/lease.json';
 const expected: Lease = JSON.parse(readFileSync(leaseFile, 'utf8'));
@@ -35,13 +36,17 @@ try {
   for await (const line of input) {
     const command = JSON.parse(line);
     try {
-      if (command.op === 'close') { await close(); console.log(JSON.stringify({ id: command.id, closed: true })); break; }
+      if (command.op === 'close') {
+        await close();
+        console.log(JSON.stringify({ id: command.id, closed: true, resources: sampleAttempt('/sys/fs/cgroup') }));
+        break;
+      }
       check();
       if (command.op === 'control') {
         const response = await context.request.post(origin + command.path, { data: command.data });
         console.log(JSON.stringify({ id: command.id, status: response.status(), result: await response.json() })); continue;
       }
-      if (command.op !== 'visit') throw Error('unknown-operation');
+      if (command.op !== 'visit' && command.op !== 'verify') throw Error('unknown-operation');
       const restoration = performance.now();
       if (command.seed) {
         const response = await context.request.post(`${origin}/seed/${expected.tenant}`);
@@ -56,10 +61,10 @@ try {
       if (!state.historyReady) throw Error('history-unavailable');
       await page.goto(`${origin}/target/1`, { waitUntil: 'load', timeout: 30_000 });
       await page.waitForFunction(() => 'fixtureStorage' in window);
-      const counter = await page.evaluate(async ({ tenant, counter, seed }) => {
-        const fn = (window as unknown as { fixtureStorage: (t: string, n: number, s: boolean) => Promise<number> }).fixtureStorage;
-        return fn(tenant, counter, seed);
-      }, { tenant: expected.tenant, counter: command.counter, seed: !!command.seed });
+      const counter = await page.evaluate(async ({ tenant, counter, seed, inspectOnly }) => {
+        const fn = (window as unknown as { fixtureStorage: (t: string, n: number, s: boolean, v: boolean) => Promise<number> }).fixtureStorage;
+        return fn(tenant, counter, seed, inspectOnly);
+      }, { tenant: expected.tenant, counter: command.counter, seed: !!command.seed, inspectOnly: command.op === 'verify' });
       const restorationMs = performance.now() - restoration;
       const inspectStart = performance.now();
       let events = 0;
