@@ -191,3 +191,54 @@ The timing/space footprint of four tiny fixture pages is not representative of F
 Propose `schedule-bounded-fixture-visits`: deploy the smallest single-host durable queue (evaluate pg-boss with actual PostgreSQL overhead against the reserved 1.5 GiB), keep one admitted browser slot initially, preserve tenant flock/generation fencing through verified termination, coalesce duplicate due visits, apply timeouts/backpressure and deterministic fair scheduling, and consume observations after releasing Chromium. Exercise cancellation, stale jobs, restart reconciliation, unavailable sessions and an uncertain outgoing **fixture** action. Record runtime/queue metrics before expanding concurrency.
 
 Keep profiles at rest, create a fresh tenant process per visit, and keep business/optional AI processing outside browser occupancy. Temporary authentication/recovery can use an exclusively admitted headed session later; normal dashboard monitoring needs no permanent desktop. Do not include production Facebook, negotiation, inventory, OpenRouter, billing, multi-host scheduling or a full dashboard in that next change. Four workers and premium concurrency should remain opt-in experiments until longer representative measurements justify them. No OpenSpec main spec was rewritten or change archived automatically.
+
+
+## Final cleanup and retained artifacts
+
+Cleanup verified on Jarlaxle after all measurements: the only remaining labelled container was the fixture (31.18 MiB cgroup current at the pre-cleanup sample). It was gracefully stopped and removed, then the labelled private network was removed without force. **Zero experiment containers remain, no host listeners on 5900/6080 remain, and the supervisor plus all three primary profile locks are free.** Every browser/display/viewer container was already gone. Final MemAvailable snapshot: 6,371.59 MiB; this is a snapshot, not another settled benchmark. Minecraft remains stopped; no automatic restoration, world/configuration change, unrelated service stop or global image/volume prune occurred.
+
+Retained on Jarlaxle under `/home/aiden/.local/share/pasarpilot-benchmark/`:
+
+- `data/` (75.79 MiB allocated): synthetic profiles, leases, normalised observations, raw metrics, failed preflight diagnostics, the pre/post-Minecraft samples, paired primary baselines, settled windows, capacity model and `runs/cleanup.json`. Root/profile directories are owner-only; result files are restricted. Fixture server-side synthetic sessions were destroyed by its shutdown; no real account credentials exist here.
+- `workspace/` (18.80 MiB allocated): reproducible sources, compiled harness and locked Playwright packages.
+- `toolchain/` (232.41 MiB allocated): user-scoped verified Node toolchain and installation artifacts; system Node/PATH was not replaced.
+- Rootless images remain for review/reproduction. Logical image sizes are 2.38 GiB base and 2.64 GiB optional display; they share layers, so these are not additive physical disk consumption. Primary image identity remains recorded separately from the later extended harness image.
+
+Raw local analysis copies are inside `/tmp/pasarpilot-results/` with owner-only directory access; the two original temporary host baseline files were tightened to mode 0600 and copied into the protected remote evidence directory. Repository artifacts contain only code, synthetic methodology, aggregates and derived projections. No profiles, tokens, VNC password, `.env` or personal Facebook data were committed.
+
+Retention is **through owner review**, with no automatic deletion job. Only the selected experiment containers/network and one-time viewer secrets were removed. Do not broadly prune storage. After review, the owner can explicitly remove the dedicated synthetic data/toolchain/images; this change does not delete them automatically. A future rerun should use a fresh dataset after restarting the in-memory fixture, preserving this evidence rather than reseeding old profiles silently.
+
+## Task and commit ledger
+
+All 27 tasks are complete after the final cleanup commit, with no remaining tasks in this change. Production integrations and long-run workload validation are intentionally outside this experiment. The change remains open for review; no archive, push or squash was performed. Pre-existing untracked skills, Facebook research and planning/configuration files were preserved and not swept into implementation commits.
+
+The ledger below covers the 26 commits through the decision report. The final `chore(benchmark): verify scoped cleanup and retain experiment evidence` commit records task 7.4 and is identified in the final implementation response. `git log --reverse ba0010a..HEAD --oneline` reproduces the complete ledger.
+
+| Commit | Message |
+| --- | --- |
+| `f83443a` | chore(benchmark): record Jarlaxle pre-stop resource baseline |
+| `367400c` | chore(benchmark): record owner-approved graceful Minecraft shutdown |
+| `08b0950` | chore(benchmark): measure Jarlaxle after Minecraft shutdown |
+| `1cc20c3` | chore(benchmark): add pinned TypeScript and Playwright workspace |
+| `fe88380` | feat(benchmark): add isolated synthetic trading fixture |
+| `f57c88e` | chore(benchmark): verify rootless Podman prerequisites on Jarlaxle |
+| `0a4fdc2` | feat(benchmark): protect profiles and isolate the fixture network |
+| `20572b4` | feat(benchmark): capture warmed baseline and declare resource envelope |
+| `4ab2520` | feat(browser): enforce exclusive persistent profile ownership |
+| `b227407` | feat(benchmark): persist observations outside the browser lifecycle |
+| `80649cf` | feat(browser): verify sandboxed persistent Chromium lifecycle on Jarlaxle |
+| `4e40f07` | fix(browser): fence stale owners and reconcile surviving attempts safely |
+| `8a3af9a` | feat(benchmark): collect whole-attempt resources and lifecycle timings |
+| `3ff893b` | test(benchmark): verify memory admission and pressure abort policies |
+| `a08f038` | test(browser): add controlled crash recovery and fencing scenarios |
+| `fd98838` | test(benchmark): validate single-slot pilot and calibrate primary limits |
+| `2a8bb3d` | test(benchmark): complete 100-visit continuous control on Jarlaxle |
+| `12d9520` | test(benchmark): complete 100 isolated profile rotations on Jarlaxle |
+| `60b648b` | test(browser): verify crash recovery and bounded hung-worker cleanup |
+| `15ee19f` | docs(benchmark): verify settled reclamation and bound browser memory-time |
+| `8d80f5c` | test(benchmark): admit and measure two isolated browser slots |
+| `06f432e` | test(benchmark): verify four-profile concurrency within measured headroom |
+| `bd21c23` | test(browser): measure isolated temporary display and noVNC access |
+| `4184310` | docs(benchmark): calculate measured browser capacity and resource costs |
+| `5f74a29` | feat(benchmark): model queue latency and bounded demand sensitivities |
+| `c359235` | docs(benchmark): record fixture-only go decision and implementation evidence |

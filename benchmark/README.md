@@ -84,3 +84,10 @@ and successful concurrency results. It writes all 864 demand/arrival sensitivity
 higher-concurrency rows use measured batch work cycles where available and otherwise explicitly
 extrapolate. Outgoing visits cost the same as observations unless separately measured. Overload
 returns unbounded backlog, not an invented finite delay. See the sanitised research report and CSV.
+
+Evidence/cleanup: keep `DATA` owner-only and outside Git. Preserve run manifests before replacing
+baselines (`runs/baseline-A.json`, `runs/baseline-B.json`) and collect `settle DATA` after each arm.
+The fixture keeps synthetic server sessions in memory; after stopping/restarting it, use a fresh
+benchmark dataset rather than silently reseeding preserved evidence. For this completed run, all
+browser/fixture containers and the labelled network were removed; protected data and images remain
+through owner review. Never prune unrelated containers/volumes or restart Minecraft automatically.
