@@ -24,7 +24,7 @@ export async function processStream(p:pg.Pool,s:string,source:string,epoch:strin
    const prior=(await c.query('SELECT * FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3 AND object_id=$4 AND id<>$5 AND result<>\'pending\' ORDER BY revision DESC LIMIT 1',[s,source,epoch,ev.object,row.id])).rows[0];
    let result:string;
    if(prior || ev.deleted || ev.revision!==1){
-    const order=(await c.query('SELECT id FROM trading.orders WHERE seller_id=$1 AND claim_id=$2',[s,prior?.id])).rows[0];
+    const order=(await c.query('SELECT id FROM trading.orders WHERE seller_id=$1 AND (claim_id=$2 OR id IN (SELECT order_id FROM trading.drafts WHERE seller_id=$1 AND source_id=$2))',[s,prior?.id])).rows[0];
     await review(c,s,row.id,'source edited/deleted; prior agreement retained',order?.id??null);
     await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND source_id=$2 AND state='proposed'",[s,prior?.id]);result='review';
    }else result=await handle(c,s,row.id,ev);

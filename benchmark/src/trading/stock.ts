@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { activity,wake,tx,type Client } from './db.js';
 import { Workspace } from './workspace.js';
-import { integer,snapshot,total } from './values.js';
+import { integer,snapshot,total,text } from './values.js';
 import { response } from './rules.js';
 import { review,type Handler } from './consumer.js';
 import { conversation } from './conversation.js';
+import { propose } from './proposals.js';
 import { offer } from './negotiation.js';
 import { classify } from './claims.js';
 export async function lockItem(c:Client,s:string,item:string) {
@@ -33,6 +34,7 @@ export async function allocate(c:Client,s:string,r:ClaimRequest,price?:number) {
  let order:string|null=null;
  if(state==='primary') {
   order=r.id;
+  await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND item_id=$2 AND conversation_id=$3 AND kind='backup' AND state='proposed'",[s,r.item,r.conversation]);
   await c.query('UPDATE trading.inventory SET reserved=reserved+$3 WHERE seller_id=$1 AND id=$2',[s,inv.id,r.quantity]);
   await c.query('UPDATE trading.items SET allocated=allocated+$3 WHERE seller_id=$1 AND id=$2',[s,item.id,r.quantity]);
   await c.query('INSERT INTO trading.orders(seller_id,id,claim_id,item_id,buyer,conversation_id,quantity,unit_price,agreement) VALUES($1,$2,$2,$3,$4,$5,$6,$7,$8)',[s,order,r.item,r.buyer,r.conversation,r.quantity,unit,snapshot(inv,r.quantity,unit)]);
@@ -50,8 +52,8 @@ export const handle:Handler=async(c,s,id,ev)=>{
  const conv=await conversation(c,s,id,ev),parsed=await classify(c,s,ev);
  if(ev.kind==='offer') return offer(c,s,id,ev,conv.id);
  if(ev.kind==='payment_evidence') {await review(c,s,id,'buyer payment evidence remains unverified');return 'unverified';}
- if(!conv.item_id||parsed.kind==='review'){await review(c,s,id,'claim needs explicit interpretation');return 'review';}
- if(parsed.kind==='inquiry') return 'inquiry';
+ if(!conv.item_id||parsed.kind==='review'){if(conv.item_id)await review(c,s,id,'claim needs explicit interpretation');await propose(c,s,conv.id,ev.item,null,id,'clarification',response('clarification'));return 'review';}
+ if(parsed.kind==='inquiry'){const {inv,item}=await lockItem(c,s,ev.item!);await propose(c,s,conv.id,item.id,null,id,'availability',response('availability',{quantity:Math.min(inv.unsold-inv.reserved,item.offered-item.allocated)}));return 'inquiry';}
  return allocate(c,s,{id,item:ev.item!,buyer:ev.actor,conversation:conv.id,quantity:parsed.quantity,position:ev.position!,kind:parsed.kind,source:id});
 };
 export async function promote(c:Client,s:string,itemId:string,claimId?:string) {
@@ -69,6 +71,7 @@ export async function settleBackups(c:Client,s:string,itemId:string) {
  const held=(await c.query("SELECT 1 FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.item_id=$2 AND r.state='held'",[s,itemId])).rowCount;
  if(!held && (inv.unsold===0||item.allocated===item.offered)) {
   const rows=(await c.query("UPDATE trading.claims SET state='unfulfilled',version=version+1 WHERE seller_id=$1 AND item_id=$2 AND state='backup' RETURNING id,version",[s,itemId])).rows;
+  await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND item_id=$2 AND kind='backup' AND state='proposed'",[s,itemId]);
   for(const r of rows) await activity(c,s,'backup_unfulfilled',r.id,r.version,'rules','sold out');
  }
 }
@@ -104,6 +107,7 @@ export async function sweep(w:Workspace) {
  for(const r of rows) await tx(w.p,c=>release(c,w.seller,r.id,'expired'));
 }
 export async function extend(w:Workspace,id:string,version:number,deadline:string,reason:string) {
+ text(reason,1000);
  const result=await tx(w.p,async c=>{
   const ref=await w.get('orders',id);const {inv}=await lockItem(c,w.seller,ref.item_id);await reconcileInventory(c,w.seller,inv.id);
   const o=(await c.query('SELECT * FROM trading.orders WHERE seller_id=$1 AND id=$2 FOR UPDATE',[w.seller,id])).rows[0];

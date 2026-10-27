@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { activity,tx,type Client } from './db.js';
 import { Workspace } from './workspace.js';
 import { integer,sen,total,snapshot } from './values.js';
-import { propose } from './proposals.js';
+import { propose,blocked } from './proposals.js';
 import { allocate,lockItem,reconcileInventory } from './stock.js';
 import { response } from './rules.js';
 import { review } from './consumer.js';
@@ -30,7 +30,7 @@ export async function acceptOffer(c:Client,s:string,d:Record<string,any>):Promis
  if(!post.open||!item.open||inv.minimum===null||offer.unit<inv.minimum) return;
  const o=(await c.query("SELECT o.*,r.expires_at>clock_timestamp() AS live,r.state AS hold FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.item_id=$2 AND o.buyer=$3 AND o.state IN ('awaiting_payment','paid') FOR UPDATE OF o,r",[s,item.id,offer.buyer])).rows[0];
  if(o) {
-  if(o.state!=='awaiting_payment'||!o.live||o.hold!=='held')return;
+  if(o.state!=='awaiting_payment'||!o.live||o.hold!=='held'||await blocked(c,s,o.id))return;
   const amount=o.fee===null?null:total(offer.unit,o.quantity,o.fee);
   await c.query('UPDATE trading.orders SET unit_price=$3,total=$4,agreement=$5,version=version+1 WHERE seller_id=$1 AND id=$2',[s,o.id,offer.unit,amount,{...snapshot(inv,o.quantity,offer.unit),previous:o.agreement}]);
   await activity(c,s,'negotiated_agreement',o.id,o.version+1,'seller','explicit approved amendment',d.source_id);return o.id;
