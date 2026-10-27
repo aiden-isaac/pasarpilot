@@ -230,3 +230,16 @@ is rejected, a second session invalidates the old cancellation version, backup
 promotion releases once and completion replay changes no stock/audit twice.
 Fresh desktop/mobile browser sales pass through the actual completion review;
 reviewed `appearance/completion-review-390.png` for contextual layout and targets.
+
+## Task 4.2: deliberate payment verification
+
+Payment verification now opens a read-only buyer/item/amount/version/deadline
+review with explicit stock-commit consequences. The amount starts blank and must
+be entered; trusted receipt starts unchecked. Existing exact-amount, expiry,
+review and delivery guards remain authoritative. Focused HTTP tests pass for
+read-only review, missing attestation, wrong amount, blocking review and late
+payment without stock revival. Existing payment/race/final-guard tests and both
+fresh browser sales pass; replay remains idempotent. Reviewed actual mobile
+`appearance/payment-review-390.png`; final critical POST returns to the owned
+order, retaining its originating navigation context. Capture uses its existing
+explicit amount/attestation; no automatic screenshot verification was added.

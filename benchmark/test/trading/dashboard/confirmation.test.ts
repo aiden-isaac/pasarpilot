@@ -22,6 +22,8 @@ test('critical review GETs are read-only; explicit confirmation, two-session ver
   const t=await payable(w),backup=id();await tx(p,c=>allocate(c,w.seller,{id:backup,item:t.item,buyer:'buyer-b',conversation:t.convB,quantity:1,position:2,kind:'claim'}));
   const count=async()=>(await p.query('SELECT count(*)::int n FROM trading.activity WHERE seller_id=$1',[w.seller])).rows[0].n;
   const before=await count();const review=await get(t.order,'cancel');assert.equal(review.status,200);assert.match(await review.text(),/may promote the earliest eligible backup/);await get(t.order);assert.equal(await count(),before);
+  const paymentReview=await get(t.order,'payment'),paymentHtml=await paymentReview.text();assert.equal(paymentReview.status,200);assert.match(paymentHtml,/commits this stock once/);assert.doesNotMatch(paymentHtml,/<input[^>]*\bchecked(?:\s|>|=)/);assert.match(paymentHtml,/<input name="amount" inputmode="decimal" autocomplete="off" required>/);assert.equal(await count(),before);
+  assert.equal((await post('/confirm-payment',{id:t.order,version:'2',amount:'10.00'})).status,409);assert.equal((await w.get('orders',t.order)).payment,'unverified');
   assert.equal((await post('/cancel',{id:t.order,version:'2',reason:'Synthetic cancellation'})).status,409);assert.equal((await w.get('orders',t.order)).state,'awaiting_payment');
   assert.equal((await post('/arrange',{id:t.order,version:'2',location:'Synthetic shop',time:new Date().toISOString()},second)).status,303);
   assert.equal((await post('/cancel',{id:t.order,version:'2',reason:'Synthetic cancellation',confirmed:'yes'})).status,409);
@@ -33,5 +35,9 @@ test('critical review GETs are read-only; explicit confirmation, two-session ver
   assert.equal((await post('/complete',{id:done.order,version:'5'})).status,409);
   assert.equal((await post('/complete',{id:done.order,version:'5',confirmed:'yes'})).status,303);
   const completed=await count();await post('/complete',{id:done.order,version:'5',confirmed:'yes'});assert.equal(await count(),completed);assert.equal((await w.get('inventory',done.inv)).unsold,0);
+  const wrong=await payable(w);assert.equal((await post('/confirm-payment',{id:wrong.order,version:'2',amount:'9.99',trusted:'yes'})).status,409);
+  assert.equal((await post('/confirm-payment',{id:wrong.order,version:'2',amount:'10.00',trusted:'yes'})).status,409);assert.equal((await w.get('inventory',wrong.inv)).reserved,1);assert.equal((await w.get('orders',wrong.order)).payment,'unverified');
+  const late=await payable(w);await p.query("UPDATE trading.reservations SET expires_at=now()-interval '1 second' WHERE seller_id=$1 AND id=$2",[w.seller,late.order]);
+  assert.equal((await post('/confirm-payment',{id:late.order,version:'2',amount:'10.00',trusted:'yes'})).status,409);assert.equal((await w.get('orders',late.order)).state,'expired');assert.equal((await w.get('inventory',late.inv)).unsold,1);
  }finally{app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
 });
