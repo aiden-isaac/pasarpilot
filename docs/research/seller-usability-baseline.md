@@ -320,3 +320,16 @@ Seven focused tests pass including existing unpaid expiry/promotion, ambiguous
 review and intermediate postage/drop-off cases. Private second-run activity
 screenshots are `test-20261028/two-guided-sales-*.png`; review-page images remain
 in `appearance/`. These six finite browser sales are not operational soak evidence.
+
+## Task 7.1: finite browser-free runner foundation
+
+Added explicit fresh disposable provisioning, canonical owner-only dataset/output
+checks, protected random credentials, stable transaction IDs, two serial seller
+streams and private streamed outcomes/request timings. Clean limits are fixed at
+120 cycles each, 30-second cadence and 60 minutes; every planned failure or
+non-admitted attempt stays counted. The runner does not start a browser or use
+capture/model credentials. Six units and the executable self-check pass, including
+private path/symlink checks and honest failed/not-attempted accounting. No soak
+was started before resource instrumentation/admission (7.2). Read-only SSH confirms
+Jarlaxle is reachable with Podman and the retained Node 22.23.4 toolchain; the
+preliminary point sample is not substituted for the required measured baseline.

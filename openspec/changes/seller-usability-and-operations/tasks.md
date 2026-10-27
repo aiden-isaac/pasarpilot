@@ -39,7 +39,7 @@
 
 ## 7. Exercise bounded browser-free operations and recovery
 
-- [ ] 7.1 Add one finite operations runner with explicit disposable dataset/output ownership checks, secure credentials, stable event IDs, two-seller concurrency ceiling and streamed private evidence; include a small self-check for workload limits and report accounting before running a soak.
+- [x] 7.1 Add one finite operations runner with explicit disposable dataset/output ownership checks, secure credentials, stable event IDs, two-seller concurrency ceiling and streamed private evidence; include a small self-check for workload limits and report accounting before running a soak.
 - [ ] 7.2 Collect actual application/worker and separate runner RSS/CPU, concurrent database cgroup metrics, host pressure/swap and request/pool/query/backlog/storage observations; add the predeclared memory/disk abort gates, 60-second baseline and fixed-record settled windows without changing host services.
 - [ ] 7.3 Add controlled disconnect/reconnect and startup-readiness cases, including idle pool errors, in-flight rollback, app restart and lost commit acknowledgements; fix only observed existing pool/transaction/worker recovery gaps and assert safe resumption within 30 seconds of readiness.
 - [ ] 7.4 Exercise unavailable optional capture, one failing seller stream and stopped scheduler/Chromium/AI; ensure expiry and healthy sellers continue through narrowly scoped worker fixes and retain invalid/missing source evidence rather than fabricate events.
