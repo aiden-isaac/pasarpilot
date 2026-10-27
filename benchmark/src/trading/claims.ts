@@ -1,7 +1,7 @@
 import { quantity } from './values.js';
 import type { Client } from './db.js';
 import type { Envelope } from './intake.js';
-export type Intent={kind:'claim'|'backup';quantity:number}|{kind:'review'|'inquiry'};
+export type Intent={kind:'claim'|'backup';quantity:number}|{kind:'review'}|{kind:'inquiry'};
 export function intent(raw:string):Intent {
  const m=/^(claim|backup)(?: ([1-9]\d*))?$/i.exec(raw.trim());
  if(m){try{return {kind:m[1]!.toLowerCase() as 'claim'|'backup',quantity:quantity(m[2]??'1')};}catch{return {kind:'review'};}}
