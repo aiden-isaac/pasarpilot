@@ -26,3 +26,7 @@ export async function activity(c: Client, seller: string, action: string, record
   await c.query('INSERT INTO trading.activity(seller_id,action,record_id,version,actor,reason,source_id) VALUES($1,$2,$3,$4,$5,$6,$7)',
     [seller, action, record, version, actor, reason, source]);
 }
+export async function wake(c:Client,name:string,data:object,startAfter?:Date) {
+ const b=queue({query:c.query.bind(c)} as unknown as pg.Pool);
+ if(!await b.send(name,data,{db:{executeSql:(q,v)=>c.query(q,v)},startAfter,retryLimit:5,retryDelay:5})) throw Error('wakeup-failed');
+}
