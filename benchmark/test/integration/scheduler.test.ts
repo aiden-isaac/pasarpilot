@@ -26,5 +26,20 @@ test('durable scheduler coalesces, bounds work, dispatches fairly and fences sta
       assert.equal((await store.submitAction(t, 'other-id', 0, now + 180_000, now)).rejected, 'action-backpressure');
     }
     assert.equal((await store.status()).queue.length, 6);
+    const a = (await store.claim())!;
+    assert.equal(a.data.tenant, 'seller-a');
+    await store.check(a, now);
+    await store.finish(a, { outcome: 'failed', error: 'fixture-unavailable' }, now);
+    const retry = await store.boss.getJobById(a.name, a.id);
+    assert.equal(retry!.state, 'retry');
+    assert.ok(retry!.startAfter.getTime() >= Date.now() + 28_000);
+    const b = (await store.claim())!;
+    assert.equal(b.data.tenant, 'seller-b');
+    await store.finish(b, { outcome: 'completed' }, now);
+    await store.close();
+    store = await SchedulerStore.open(root);
+    const c = (await store.claim())!;
+    assert.equal(c.data.tenant, 'seller-c');
+    await store.finish(c, { outcome: 'completed' }, now);
   } finally { await cleanup(); }
 });

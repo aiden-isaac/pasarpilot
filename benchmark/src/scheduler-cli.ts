@@ -23,6 +23,14 @@ export async function schedulerCommand(command: string, dataRoot: string, args: 
       const [t, id, revision, deadline] = args;
       console.log(JSON.stringify(await store.submitAction(t!, id!, Number(revision), Number(deadline))));
     }
+    else if (command === 'scheduler-cancel') {
+      await store.cancel(args[0]!);
+    }
+    else if (command === 'scheduler-configure') {
+      const [t, state, every] = args;
+      if (state !== 'enabled' && state !== 'disabled') throw Error('expected-enabled-or-disabled');
+      await store.configure(t!, state === 'enabled', every === undefined ? undefined : Number(every));
+    }
     else throw Error('unknown-scheduler-command');
   } finally { await store.close(); }
 }

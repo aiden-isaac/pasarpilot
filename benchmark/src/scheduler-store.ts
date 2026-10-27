@@ -155,6 +155,43 @@ export class SchedulerStore {
       }
     });
   }
+  async check(job: Claim, now = Date.now()): Promise<void> {
+    await this.healthy();
+    const s = (await this.pool.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1`, [job.data.tenant])).rows[0]!;
+    const current = await this.boss.getJobById<VisitJob>(job.name, job.id);
+    if (!current || current.state !== 'active' || current.retryCount !== job.retryCount) throw Error('queue-ownership-lost');
+    const reason = obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now);
+    if (reason) throw Error(reason);
+  }
+  async finish(job: Claim, result: Outcome, now = Date.now(), recovering = false) {
+    return this.transaction(async c => {
+      const s = (await c.query<Schedule>(`SELECT * FROM ${this.schema}.schedule WHERE tenant=$1 FOR UPDATE`, [job.data.tenant])).rows[0]!;
+      // v10 settlement takes IDs, so fence under a row lock before using it in this transaction.
+      const current = (await c.query(`SELECT * FROM ${this.queueSchema}.job WHERE id=$1 AND name=$2 FOR UPDATE`, [job.id, job.name])).rows[0];
+      if (!current || current.retry_count !== job.retryCount || (!recovering && current.state !== 'active')) throw Error('queue-ownership-lost');
+      const delay = !recovering && !obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now) ? retryDelay(job.data, job.retryCount, result.error ?? '', now) : undefined;
+      if (delay !== undefined) {
+        await c.query(`UPDATE ${this.queueSchema}.job SET retry_delay=$2 WHERE id=$1`, [job.id, delay]);
+        await this.boss.fail(job.name, job.id, result, { db: transactionDb(c) });
+      } else {
+        if (current.state === 'active') await this.boss.complete(job.name, job.id, result, { db: transactionDb(c) });
+        else await this.boss.cancel(job.name, job.id, { db: transactionDb(c) });
+        if (job.data.kind === 'observation') await c.query(`UPDATE ${this.schema}.schedule SET observation=NULL,
+          first_pending=CASE WHEN latest_due IS NULL THEN NULL ELSE first_pending END WHERE tenant=$1 AND observation=$2`, [job.data.tenant, job.id]);
+        else await c.query(`UPDATE ${this.schema}.action SET outcome=$2,result=$3 WHERE job=$1`, [job.id, result.outcome, result]);
+      }
+      await c.query(`UPDATE ${this.schema}.attempt SET result=$3,ended_at=now() WHERE job=$1 AND delivery=$2`, [job.id, job.retryCount, { ...result, retryInSeconds: delay }]);
+    });
+  }
+  async cancel(id: string) {
+    if (!/^[a-f0-9-]{36}$/.test(id)) throw Error('invalid-job-id');
+    const result = await this.pool.query(`UPDATE ${this.queueSchema}.job SET data=data || '{"cancelled":true}'::jsonb WHERE id=$1 AND state<'completed' RETURNING id`, [id]);
+    if (!result.rowCount) throw Error('nonterminal-job-not-found');
+  }
+  async configure(t: string, enabled: boolean, every?: number) {
+    tenant(t); if (every !== undefined) interval(every);
+    await this.pool.query(`UPDATE ${this.schema}.schedule SET enabled=$2,revision=revision+1,interval_ms=COALESCE($3,interval_ms) WHERE tenant=$1`, [t, enabled, every]);
+  }
   async status() {
     await this.identity();
     const schedules = (await this.pool.query(`SELECT * FROM ${this.schema}.schedule ORDER BY tenant`)).rows;

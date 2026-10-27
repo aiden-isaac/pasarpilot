@@ -16,6 +16,18 @@ test('round robin continues after each persisted tenant across a restart', () =>
   assert.deepEqual(turns, Array(4).fill(['seller-a','seller-b','seller-c']).flat());
   assert.deepEqual(roundRobin('seller-b'), ['seller-c','seller-a','seller-b']);
 });
+test('obsolete work and bounded transient retries have explicit reasons', () => {
+  assert.equal(obsolete(job, 2, true, null, 0), 'obsolete-revision');
+  assert.equal(obsolete(job, 1, false, null, 0), 'cancelled');
+  assert.equal(obsolete(job, 1, true, 'history-unavailable', 0), 'history-unavailable');
+  assert.equal(obsolete(job, 1, true, null, job.deadline), 'deadline-expired');
+  assert.equal(retryDelay(job, 0, 'fixture-unavailable', 0), 30);
+  assert.equal(retryDelay(job, 1, 'fixture-unavailable', 0), 60);
+  assert.equal(retryDelay(job, 2, 'fixture-unavailable', 0), undefined);
+  assert.equal(retryDelay(job, 0, 'reauth-required', 0), undefined);
+  assert.equal(retryDelay({ ...job, kind: 'action' }, 0, 'fixture-unavailable', 0), undefined);
+  assert.equal(retryDelay(job, 0, 'fixture-unavailable', 160_000), undefined);
+});
 test('scheduler rejects unknown tenants, unsafe roots and invalid scalar inputs', () => {
   for (const value of ['seller-d','../seller-a','']) assert.throws(() => tenant(value));
   for (const value of [0,NaN,Infinity,999,86_400_001]) assert.throws(() => interval(value));
