@@ -218,3 +218,15 @@ onboarding plus the sale at 1280×800 and 390×844. Both pass, including checkli
 1/6→6/6 and zero deliveries before explicit response approval. Reviewed actual
 profile/checklist screenshots `appearance/onboarding-{1280,390}.png`; native forms
 stack cleanly on mobile. Fresh UI datasets are separate from retained demo data.
+
+## Task 4.1: cancellation/completion review
+
+Read-only contextual review pages show buyer/variant/quantity/amount/current
+version/state and release/promotion or receipt consequences. Unchecked explicit
+confirmation is required by HTML and the POST handler; unavailable transitions
+link back safely. Capture-demo and browser completion callers are updated.
+Focused HTTP tests pass: opening/back navigation appends nothing, absent intent
+is rejected, a second session invalidates the old cancellation version, backup
+promotion releases once and completion replay changes no stock/audit twice.
+Fresh desktop/mobile browser sales pass through the actual completion review;
+reviewed `appearance/completion-review-390.png` for contextual layout and targets.

@@ -61,7 +61,7 @@ export async function run(root:string) {
   await post('/terms',{id:o.id,version:'1',method:'collection',fee:'0.00'});await post('/payment-draft',{id:o.id,version:'2'});
   const draft=(await p.query("SELECT id FROM trading.drafts WHERE seller_id=$1 AND order_id=$2 AND kind='payment'",[w.seller,o.id])).rows[0];await post('/approve',{id:draft.id,version:'1'});
   await post('/confirm-payment',{id:o.id,version:'2',amount:'10.00',trusted:'yes'});await post('/arrange',{id:o.id,version:'3',location:'Synthetic game shop',time:new Date().toISOString()});
-  await post('/fulfil',{id:o.id,version:'4',status:'collected',evidence:'Seller confirmed actual synthetic handover'});await post('/complete',{id:o.id,version:'5'});
+  await post('/fulfil',{id:o.id,version:'4',status:'collected',evidence:'Seller confirmed actual synthetic handover'});await post('/complete',{id:o.id,version:'5',confirmed:'yes'});
   const final=await w.get('inventory',demo.inventory);assert.equal(final.unsold,0);assert.equal(final.reserved,0);assert.equal((await w.get('orders',o.id)).state,'completed');
   report.trade={state:'completed',priceSen:1000,stock:0,reserved:0,primaryOrders:1,backup:(await w.get('claims',backup.id)).state};
   report.scheduler=await store.status();assert.ok(!report.resourceError);assert.equal(minecraftPids().length,0);report.complete=true;

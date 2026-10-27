@@ -22,7 +22,7 @@
 
 ## 4. Guard critical interactions and make errors recoverable
 
-- [ ] 4.1 Add read-only contextual confirmation pages and server-validated explicit intent for unpaid cancellation and completion; preserve CSRF/version/domain functions and test cancel/back/no-confirmation paths plus a two-session state change before final submission.
+- [x] 4.1 Add read-only contextual confirmation pages and server-validated explicit intent for unpaid cancellation and completion; preserve CSRF/version/domain functions and test cancel/back/no-confirmation paths plus a two-session state change before final submission.
 - [ ] 4.2 Add the payment review step with manually entered exact amount, unchecked trusted-receipt attestation and commitment consequences; update HTTP/Playwright/capture-demo callers as needed and test wrong/late amounts, expired holds, blocking review and replay without duplicate stock effects.
 - [ ] 4.3 Replace raw/generic action failures with safe field summaries, relevant current state and recovery links; preserve non-secret valid inputs, handle response uncertainty/relogin, add immediate progressive pending feedback and verify the core workflow still works without JavaScript.
 

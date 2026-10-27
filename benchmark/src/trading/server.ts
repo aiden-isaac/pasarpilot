@@ -8,7 +8,7 @@ import { stylesheet,script } from './assets.js';
 export const escape=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export const field=(name:string,label:string,value:unknown='',type='text')=>`<label>${escape(label)} <input name="${escape(name)}" type="${type}" value="${escape(value)}" required></label> `;
 export const hidden=(name:string,value:unknown)=>`<input type="hidden" name="${escape(name)}" value="${escape(value)}">`;
-export const form=(path:string,csrf:string,body:string,button:string)=>`<form method="post" action="${path}">${hidden('csrf',csrf)}${body}<button>${escape(button)}</button></form>`;
+export const form=(path:string,csrf:string,body:string,button:string)=>`<form method="post" action="${path}"${['/cancel','/complete','/confirm-payment'].includes(path)?' class="critical"':''}>${hidden('csrf',csrf)}${body}<button>${escape(button)}</button></form>`;
 export type Mutation=(w:Workspace,path:string,f:URLSearchParams)=>Promise<void|string>;
 export type View=(w:Workspace,csrf:string,url:URL)=>Promise<string>;
 export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-found');},view:View=async()=>'<p>Inventory and trading workspace</p>') {
