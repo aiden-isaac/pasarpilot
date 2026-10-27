@@ -32,6 +32,7 @@ export async function run(root: string, mode: 'pilot' | 'continuous' | 'rotation
   let stopHeartbeat: (() => void) | undefined;
   const collect = () => {
     try {
+      if (minecraftPids().length) throw Error('minecraft-restarted-during-run');
       const sample = sampleHost(); hostSamples.push(sample); guard.check(sample);
       if (session?.cgroup && owner) {
         const sample = sampleAttempt(session.cgroup);
@@ -52,6 +53,8 @@ export async function run(root: string, mode: 'pilot' | 'continuous' | 'rotation
     collect();
     const currentSession = session; session = undefined;
     const dead = await currentSession.stop();
+    if (currentSession.finalResources) attemptSamples.push({ tenant: owner.lease.tenant,
+      attempt: owner.lease.attempt, sample: currentSession.finalResources });
     if (!dead) throw Error('termination-unproven');
     await owner.release(true, failure?.message.includes('reauth') || failure?.message.includes('history-unavailable') ? 'reauth-required' : 'stored');
     stopHeartbeat?.(); stopHeartbeat = undefined;

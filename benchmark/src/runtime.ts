@@ -28,6 +28,7 @@ export class Session {
   readonly child: ChildProcessWithoutNullStreams;
   readonly ready: Promise<Reply>;
   cgroup?: string;
+  finalResources?: ReturnType<typeof sampleAttempt>;
   private stopping?: Promise<boolean>;
   constructor(readonly owner: Ownership, capBytes: number, origin: string, headed = false) {
     const args = ['run', '--http-proxy=false', '-i', '--name', owner.lease.container,
@@ -97,7 +98,10 @@ export class Session {
     if (!inspect(name).State.Running) return terminated(name, this.owner.root, this.cgroup);
     if (crash) podman(['kill', '--signal', 'KILL', name]);
     else {
-      try { await Promise.race([this.send({ op: 'close' }, true), new Promise((_, reject) => setTimeout(() => reject(Error('shutdown-timeout')), defaults.shutdownMs).unref())]); }
+      try { await Promise.race([
+        this.send({ op: 'close' }, true).then(reply => { this.finalResources = reply.resources as ReturnType<typeof sampleAttempt>; }),
+        new Promise((_, reject) => setTimeout(() => reject(Error('shutdown-timeout')), defaults.shutdownMs).unref()),
+      ]); }
       catch { /* Container stop below is the bounded cleanup fallback. */ }
       if (inspect(name).State.Running) podman(['stop', '--time', '15', name]);
     }

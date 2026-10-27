@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import { initialise, writeJson } from './storage.js';
 import { baseline, minecraftPids } from './host.js';
 import { budget, guardBytes } from './metrics.js';
@@ -35,6 +36,19 @@ if (command === 'baseline' && dataRoot) {
     Number(process.argv[4] ?? (command === 'pilot' ? 3 : 100)), Number(process.argv[5] ?? defaults.cadenceMs));
 } else if (command === 'settle' && dataRoot) {
   await (await import('./runner.js')).settle(initialise(dataRoot));
+} else if (command === 'calibrate' && dataRoot) {
+  const path = join(dataRoot, 'manifest.json');
+  const manifest = JSON.parse(readFileSync(path, 'utf8'));
+  const name = readdirSync(join(dataRoot, 'runs')).filter(n => /^pilot-\d+\.json$/.test(n)).sort().at(-1);
+  if (!name) throw Error('pilot-results-required');
+  const pilot = JSON.parse(readFileSync(join(dataRoot, 'runs', name), 'utf8'));
+  if (!pilot.complete || pilot.results.length < 3 || new Set(pilot.results.map((r: { tenant: string }) => r.tenant)).size < 3 || !pilot.nextAllowance) throw Error('pilot-incomplete');
+  manifest.calibration = { source: name, peak: pilot.peak, minimumAllowance: pilot.nextAllowance,
+    reason: 'Keep the conservative initial cap for matched primary arms; optional concurrency is recalibrated after both arms.' };
+  manifest.measuredAllowance = Math.max(defaults.capBytes, pilot.nextAllowance);
+  manifest.pilotPassed = true;
+  if (manifest.measuredAllowance > manifest.poolBudget) throw Error('calibrated-budget-unavailable');
+  writeJson(path, manifest); console.log(JSON.stringify(manifest.calibration));
 } else {
   console.log('Usage: node dist/src/cli.js baseline PRIVATE_DATA_ROOT');
   if (command) process.exitCode = 2;

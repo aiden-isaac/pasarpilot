@@ -24,7 +24,7 @@
 - [x] 4.1 Collect one-second and lifecycle-boundary host/cgroup/process metrics, including memory categories/peak, RSS/PSS, CPU/throttling, swap, PSI, OOMs, phase/occupied-slot timings and quiescent profile disk growth; report unsupported counters explicitly.
 - [x] 4.2 Implement live admission using measured headroom and aggregate mode allowances, defaulting to one slot; enforce the declared pressure/OOM stop conditions and test rejection/abort paths without pressuring unrelated host workloads.
 - [x] 4.3 Add small fixture-based checks for identity persistence, cross-tenant isolation, duplicate-profile rejection, stale-generation fencing, supervisor restart with surviving attempt, crash recovery, cancellation, unavailable history and uncertain actions.
-- [ ] 4.4 Run the admitted single-slot pilot, verify complete process accounting/cleanup and tune the declared mode allowance from measured peak plus headroom; record any configuration change before primary comparisons.
+- [x] 4.4 Run the admitted single-slot pilot, verify complete process accounting/cleanup and tune the declared mode allowance from measured peak plus headroom; record any configuration change before primary comparisons.
 
 ## 5. Run the primary matched comparisons
 
