@@ -32,7 +32,7 @@ export async function acceptOffer(c:Client,s:string,d:Record<string,any>):Promis
  if(o) {
   if(o.state!=='awaiting_payment'||!o.live||o.hold!=='held'||await blocked(c,s,o.id))return;
   const amount=o.fee===null?null:total(offer.unit,o.quantity,o.fee);
-  await c.query('UPDATE trading.orders SET unit_price=$3,total=$4,agreement=$5,version=version+1 WHERE seller_id=$1 AND id=$2',[s,o.id,offer.unit,amount,{...snapshot(inv,o.quantity,offer.unit),previous:o.agreement}]);
+  await c.query('UPDATE trading.orders SET unit_price=$3,total=$4,agreement=$5,version=version+1 WHERE seller_id=$1 AND id=$2',[s,o.id,offer.unit,amount,{...snapshot(inv,o.quantity,offer.unit),fee:o.fee,previous:o.agreement}]);
   await activity(c,s,'negotiated_agreement',o.id,o.version+1,'seller','explicit approved amendment',d.source_id);return o.id;
  }
  const fresh=(await c.query('SELECT * FROM trading.inventory WHERE seller_id=$1 AND id=$2',[s,inv.id])).rows[0];

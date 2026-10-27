@@ -38,6 +38,7 @@ export async function approve(w:Workspace,id:string,version:number) {
   if(d.order_id){const o=(await c.query('SELECT o.state,r.state AS hold,r.expires_at>clock_timestamp() AS live FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.id=$2 FOR UPDATE OF o,r',[w.seller,d.order_id])).rows[0];
    stale ||= await blocked(c,w.seller,d.order_id) || (o.state==='awaiting_payment' && (!o.live||o.hold!=='held')) || ['cancelled','expired'].includes(o.state);
   }
+  if(d.kind==='availability'){const {inv,post,item}=await lockItem(c,w.seller,d.item_id);stale ||= d.text!==response('availability',{quantity:post.open&&item.open?Math.min(inv.unsold-inv.reserved,item.offered-item.allocated):0});}
   if(d.kind==='payment') { const config=(await c.query('SELECT * FROM trading.sellers WHERE id=$1 FOR SHARE',[w.seller])).rows[0]; stale ||= !config.instructions_approved||config.instruction_version!==d.dependencies.instruction; }
   if(!stale && d.kind==='offer'){ const order=await acceptOffer(c,w.seller,d); if(!order) stale=true; else { d.order_id=order; await c.query('UPDATE trading.drafts SET order_id=$3 WHERE seller_id=$1 AND id=$2',[w.seller,id,order]); } }
   if(stale){await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND id=$2",[w.seller,id]);return 'stale';}
@@ -57,7 +58,7 @@ export async function regenerate(w:Workspace,id:string,version:number,reason:str
   if(d.kind==='payment'||d.kind==='offer')throw Error('stale-create-new-payment-request-or-offer');
   let body=d.text,source=d.source_id,kind=d.kind;
   if(d.order_id){const o=(await c.query('SELECT o.*,r.expires_at>clock_timestamp() AS live FROM trading.orders o JOIN trading.reservations r USING(seller_id,id) WHERE o.seller_id=$1 AND o.id=$2',[w.seller,d.order_id])).rows[0];if(await blocked(c,w.seller,o.id))throw Error('review-required');if(kind==='claim'){if(o.state!=='awaiting_payment'||!o.live)throw Error('stale-no-live-hold');body=response('claim',{quantity:o.quantity});}}
-  if(kind==='availability'){const {inv,item}=await lockItem(c,w.seller,d.item_id);body=response('availability',{quantity:Math.min(inv.unsold-inv.reserved,item.offered-item.allocated)});}
+  if(kind==='availability'){const {inv,post,item}=await lockItem(c,w.seller,d.item_id);body=response('availability',{quantity:post.open&&item.open?Math.min(inv.unsold-inv.reserved,item.offered-item.allocated):0});}
   if(kind==='backup'){const claim=(await c.query("SELECT state FROM trading.claims WHERE seller_id=$1 AND item_id=$2 AND conversation_id=$3 ORDER BY position,id LIMIT 1",[w.seller,d.item_id,d.conversation_id])).rows[0];if(claim?.state!=='backup')throw Error('stale-no-queued-backup');}
   if(source){const old=(await c.query('SELECT * FROM trading.inbox WHERE seller_id=$1 AND id=$2',[w.seller,source])).rows[0];source=(await c.query('SELECT id FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3 AND object_id=$4 ORDER BY revision DESC LIMIT 1',[w.seller,old.source,old.epoch,old.object_id])).rows[0].id;if((await c.query('SELECT 1 FROM trading.reviews WHERE seller_id=$1 AND source_id=$2 AND NOT resolved',[w.seller,source])).rowCount)throw Error('review-required');}
   await c.query("UPDATE trading.drafts SET state='stale',version=version+1 WHERE seller_id=$1 AND id=$2",[w.seller,id]);

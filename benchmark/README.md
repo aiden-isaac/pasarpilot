@@ -282,3 +282,14 @@ automatically. Restarting the fixture invalidates its in-memory sessions/action 
 explicitly prepared dataset for a new experiment.
 
 See [scheduler evidence and limitations](../docs/research/bounded-fixture-scheduling.md).
+
+## Assisted synthetic WTS trading
+
+The loopback seller workspace supports explicit MTG inventory, mapped WTS comments, atomic claims/backups,
+reviewed responses, seller-confirmed payment and actual collection/delivery. It uses integer MYR sen,
+the existing private PostgreSQL and a separate browser-free application queue. Browser capture is opt-in;
+default benchmark/scheduler visits retain their existing 400-event ledger and ownership rules.
+
+See the [setup, seller demo, recovery and acceptance report](../docs/research/assisted-wts-trading-core.md)
+for secure two-account provisioning, separate test commands and measured resource results. The approved
+change is `assisted-wts-trading-core` and remains unarchived. No live Facebook or real payment integration is enabled.

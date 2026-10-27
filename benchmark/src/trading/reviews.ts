@@ -4,7 +4,7 @@ import { Workspace } from './workspace.js';
 import { integer,text } from './values.js';
 import { envelope } from './intake.js';
 import { conversation } from './conversation.js';
-import { allocate,lockItem,promote,release } from './stock.js';
+import { allocate,lockItem,promote,release,sweep } from './stock.js';
 export async function resolve(w:Workspace,id:string,version:number,action:'claim'|'backup'|'associate'|'reject',item:string,buyer:string,qty:number,reason:string) {
  text(reason,1000);integer(version,1);
  return tx(w.p,async c=>{
@@ -28,7 +28,7 @@ export async function resolve(w:Workspace,id:string,version:number,action:'claim
  });
 }
 export async function manualPromote(w:Workspace,id:string,version:number,reason:string) {
- text(reason,1000);return tx(w.p,async c=>{
+ text(reason,1000);await sweep(w);return tx(w.p,async c=>{
   const ref=await w.get('claims',id);await lockItem(c,w.seller,ref.item_id);
   const r=(await c.query('SELECT * FROM trading.claims WHERE seller_id=$1 AND id=$2 FOR UPDATE',[w.seller,id])).rows[0];
   if(r.version!==integer(version,1)||r.state!=='backup')throw Error('stale-backup');

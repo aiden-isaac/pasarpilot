@@ -1,7 +1,7 @@
 import pg, { type PoolClient } from 'pg';
 import PgBoss from 'pg-boss';
 export type Client = PoolClient;
-export const schemaVersion = 1;
+export const schemaVersion = 2;
 export function pool(user = 'trading_runtime') {
   if (!process.env.PGHOST?.startsWith('/')) throw Error('explicit-private-PGHOST-required');
   return new pg.Pool({ host: process.env.PGHOST, database: 'fixture', user, max: 3,
@@ -18,9 +18,9 @@ export function queue(p: pg.Pool) {
   b.on('error', () => { console.error('trading-queue-error'); });
   return b;
 }
-export async function checkSchema(p: pg.Pool) {
+export async function checkSchema(p: Pick<pg.Pool,'query'>) {
   const r = await p.query('SELECT version FROM trading.migrations ORDER BY version');
-  if (r.rows.length !== 1 || r.rows[0].version !== schemaVersion) throw Error('incompatible-trading-schema');
+  if (r.rows.length !== schemaVersion || r.rows.some((r,i)=>r.version!==i+1)) throw Error('incompatible-trading-schema');
 }
 export async function activity(c: Client, seller: string, action: string, record: string, version: number, actor = 'seller', reason = '', source: string | null = null) {
   await c.query('INSERT INTO trading.activity(seller_id,action,record_id,version,actor,reason,source_id) VALUES($1,$2,$3,$4,$5,$6,$7)',

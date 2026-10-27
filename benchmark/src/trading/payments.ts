@@ -19,7 +19,7 @@ export async function terms(w:Workspace,id:string,version:number,method:'collect
   const o=(await c.query('SELECT * FROM trading.orders WHERE seller_id=$1 AND id=$2 FOR UPDATE',[w.seller,id])).rows[0];
   if(o.state!=='awaiting_payment'||o.version!==integer(version,1))return 'stale-order-or-expired';
   const due=fee===null?null:total(o.unit_price,o.quantity,fee);
-  await c.query("UPDATE trading.orders SET fee=$3,total=$4,arrangement=$5,fulfilment='arranged',version=version+1 WHERE seller_id=$1 AND id=$2",[w.seller,id,fee,due,{method}]);
+  await c.query("UPDATE trading.orders SET fee=$3,total=$4,arrangement=$5,agreement=$6,fulfilment='arranged',version=version+1 WHERE seller_id=$1 AND id=$2",[w.seller,id,fee,due,{method},{...o.agreement,fee,fulfilment_method:method,previous:o.agreement}]);
   await activity(c,w.seller,'fulfilment_terms_agreed',id,o.version+1,'seller');
  });if(error)throw Error(error);
 }

@@ -46,14 +46,16 @@ export async function allocate(c:Client,s:string,r:ClaimRequest,price?:number) {
  const draft=randomUUID();await c.query('INSERT INTO trading.drafts(seller_id,id,conversation_id,order_id,item_id,source_id,kind,text,dependencies) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[s,draft,r.conversation,order,r.item,r.source??null,state==='primary'?'claim':'backup',response(state==='primary'?'claim':'backup',{quantity:r.quantity}),dependencies]);
  await activity(c,s,state==='primary'?'hold_created':'backup_queued',r.id,1,r.buyer,'',r.source??null);
  await activity(c,s,'response_proposed',draft,1,'rules','',r.source??null);
+ if(state==='backup'){await settleBackups(c,s,r.item);return (await c.query('SELECT state FROM trading.claims WHERE seller_id=$1 AND id=$2',[s,r.id])).rows[0].state;}
  return state;
 }
 export const handle:Handler=async(c,s,id,ev)=>{
+ if(ev.item){const {inv}=await lockItem(c,s,ev.item);await reconcileInventory(c,s,inv.id);}
  const conv=await conversation(c,s,id,ev),parsed=await classify(c,s,ev);
- if(ev.kind==='offer') return offer(c,s,id,ev,conv.id);
+ if(ev.kind==='offer'){if(!conv.item_id)return 'review';return offer(c,s,id,ev,conv.id);}
  if(ev.kind==='payment_evidence') {await review(c,s,id,'buyer payment evidence remains unverified');return 'unverified';}
  if(!conv.item_id||parsed.kind==='review'){if(conv.item_id)await review(c,s,id,'claim needs explicit interpretation');await propose(c,s,conv.id,ev.item,null,id,'clarification',response('clarification'));return 'review';}
- if(parsed.kind==='inquiry'){const {inv,item}=await lockItem(c,s,ev.item!);await propose(c,s,conv.id,item.id,null,id,'availability',response('availability',{quantity:Math.min(inv.unsold-inv.reserved,item.offered-item.allocated)}));return 'inquiry';}
+ if(parsed.kind==='inquiry'){const {inv,post,item}=await lockItem(c,s,ev.item!);await propose(c,s,conv.id,item.id,null,id,'availability',response('availability',{quantity:post.open&&item.open?Math.min(inv.unsold-inv.reserved,item.offered-item.allocated):0}));return 'inquiry';}
  return allocate(c,s,{id,item:ev.item!,buyer:ev.actor,conversation:conv.id,quantity:parsed.quantity,position:ev.position!,kind:parsed.kind,source:id});
 };
 export async function promote(c:Client,s:string,itemId:string,claimId?:string) {

@@ -4,6 +4,7 @@ export const tables=['inventory','listings','items','claims','orders','reservati
 export type Table=typeof tables[number];
 export class Workspace {
  constructor(readonly p:pg.Pool,readonly seller:string) { text(seller); }
+ // shortcut: views show at most 200 records, add pagination before long-lived seller use.
  async rows(table:Table) {
   if(!tables.includes(table)) throw Error('invalid-table');
   return (await this.p.query(`SELECT * FROM trading.${table} WHERE seller_id=$1 ORDER BY id LIMIT 200`,[this.seller])).rows;

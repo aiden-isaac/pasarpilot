@@ -1,10 +1,13 @@
-import { checkSchema, queue, tx } from './db.js';
+import { queue, tx,type Client } from './db.js';
 import type pg from 'pg';
+async function upgrade(c:Client){
+ await c.query(`ALTER TABLE trading.orders ADD CONSTRAINT known_total CHECK((fee IS NULL AND total IS NULL) OR (fee IS NOT NULL AND total IS NOT NULL AND total=quantity::bigint*unit_price+fee)); INSERT INTO trading.migrations(version) VALUES(2);`);
+}
 export async function migrate(p: pg.Pool) {
   await tx(p, async c => {
     await c.query("SELECT pg_advisory_xact_lock(hashtext('trading-migration'))");
     const exists = (await c.query("SELECT to_regclass('trading.migrations') AS t")).rows[0].t;
-    if (exists) { await checkSchema(p); return; }
+    if (exists) { const versions=(await c.query('SELECT version FROM trading.migrations ORDER BY version')).rows.map(r=>r.version);if(JSON.stringify(versions)==='[1]')await upgrade(c);else if(JSON.stringify(versions)!=='[1,2]')throw Error('incompatible-trading-schema');return; }
     await c.query(`
 CREATE SCHEMA trading;
 CREATE TABLE trading.migrations(version int PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
@@ -83,6 +86,7 @@ REVOKE UPDATE,DELETE ON trading.activity,trading.migrations FROM trading_runtime
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA trading TO trading_runtime;
 CREATE SCHEMA IF NOT EXISTS trading_queue AUTHORIZATION trading_runtime;
 `);
+    await upgrade(c);
   });
   const b = queue(p); try { await b.start(); for (const name of ['inbox','expiry']) await b.createQueue(name); }
   finally { await b.stop(); }
