@@ -15,6 +15,7 @@ test('authenticated seller creates variant and post, completes one RM10 sale wit
  try{browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
  const page=await browser.newPage();page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
  const base=`http://127.0.0.1:${addr.port}`;
+ await page.goto(base+'/?view=settings');await page.getByLabel('Display name',{exact:true}).fill('Invited synthetic seller');await page.getByRole('button',{name:'Save display profile',exact:true}).click();assert.match(await page.locator('.workspace-header').innerText(),/Invited synthetic seller/);
  await page.goto(base+'/?view=inventory');await page.getByText('Add inventory',{exact:true}).first().click();
  const name=`Synthetic Bolt ${id()}`,title=`WTS ${id()}`;
  const add=page.locator('form[action="/inventory"]').filter({has:page.getByRole('button',{name:'Add inventory',exact:true})});

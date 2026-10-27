@@ -188,3 +188,13 @@ zoom on 1280×800 pass reflow. This is automated zoom-equivalent emulation, not
 a native browser-toolbar zoom interaction. Reviewed private screenshots in
 `test-20261028/appearance/` (light/dark desktop/mobile, enlarged text and zoom).
 Actual screen-reader workflow is still a separate final acceptance requirement.
+
+## Task 3.1: display profile
+
+Authenticated settings now save a bounded single-line plain-text display name
+with independent current version, CSRF and transactional `profile_saved` activity.
+Foreign explicit scope, unsafe/oversized input and stale updates are rejected.
+The focused HTTP/database test proves credentials/payment versions and the other
+seller stay unchanged, one audit entry is appended and the profile persists after
+logout plus connection/server restart. Build and the browser sale pass; the
+Playwright workflow edits the actual profile form and verifies the shell identity.

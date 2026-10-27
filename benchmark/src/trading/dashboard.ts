@@ -14,12 +14,17 @@ import { processStream } from './consumer.js';
 import { destinations,views,safeReturn } from './navigation.js';
 import type { Page } from './paging.js';
 import { label,date,nextAction } from './presentation.js';
+import { profile } from './profile.js';
 const cardFields=['name','printing','collector','language','finish','condition'] as const;
 const select=(name:string,label:string,choices:{id:string;label:string}[],value?:string)=>`<label>${e(label)} <select name="${name}">${choices.map(o=>`<option value="${e(o.id)}"${o.id===value?' selected':''}>${e(o.label)}</option>`).join('')}</select></label> `;
 const options=(values:string[])=>values.map(id=>({id,label:id}));
 const version=(r:Record<string,unknown>)=>hidden('id',r.id)+hidden('version',r.version);
 export const mutate:Mutation=async(w,path,f)=>{
  const get=(k:string)=>f.get(k)??'',v=()=>integer(Number(get('version')),1);
+ if(path==='/profile'){
+  if(f.has('seller_id')&&get('seller_id')!==w.seller)throw Error('invalid-profile-scope');
+  await profile(w,v(),get('display_name'));return;
+ }
  if(path==='/inventory') {
   const card=Object.fromEntries(cardFields.map(k=>[k,get(k)])) as Pick<Card,typeof cardFields[number]>;
   const stock=get('unsold');if(!/^(0|[1-9]\d*)$/.test(stock))throw Error('invalid-stock');
@@ -119,7 +124,7 @@ export const view:View=async(w,csrf,url)=>{
   if(selected){const r=await w.get('reviews',selected),source=r.source_id?(await w.p.query('SELECT envelope FROM trading.inbox WHERE seller_id=$1 AND id=$2',[w.seller,r.source_id])).rows[0]:undefined,selection=await choose('items');content+=`<article><h3>${e(r.reason)}</h3><p>${r.resolved?'Resolved':'Needs seller intervention'}</p>${r.order_id?link('orders',r.order_id,'Open affected order'):''}<details><summary>Inspect synthetic source</summary><pre>${e(JSON.stringify(source?.envelope??{},null,2))}</pre></details>${r.resolved?'':selection.html+form('/review',csrf,version(r)+select('action','Decision',options(['claim','backup','associate','reject']))+hidden('item',selection.chosen?.id??'')+`<p>Selected item: ${e(selection.chosen?cardLabel(selection.chosen):'None · rejection does not require an item')}</p>`+select('buyer','Confirmed buyer',options(['buyer-a','buyer-b']))+field('quantity','Confirmed quantity',1,'number')+field('reason','Review reason'),'Resolve review')}</article>`;}
   else{const page=await w.page('reviews',{...pageInput(),resolved:'false'});content+=empty(page.rows,'No unresolved reviews.')+page.rows.map(r=>`<p>${link('reviews',r.id,r.reason)}</p>`).join('')+pages(page);}
  }
- if(section==='settings')content=`<h2>Settings & help</h2><h3>Seller payment instructions</h3><p>Use synthetic payment details only. Configuration approval and delivery approval are separate actions.</p>${form('/instructions',csrf,hidden('version',seller.instruction_version)+field('instructions','Synthetic payment instructions',seller.instructions)+select('approved','Approved for sharing',options(['no','yes']),seller.instructions_approved?'yes':'no'),'Save instructions')}<p>Login: ${e(seller.login)}. Invited accounts are provisioned by the operator.</p>`;
+ if(section==='settings')content=`<h2>Settings & help</h2><section><h3>Display profile</h3><p>Your display name is separate from your invited login and payment instructions.</p>${form('/profile',csrf,hidden('version',seller.profile_version)+`<label>Display name <input name="display_name" maxlength="80" autocomplete="nickname" value="${e(seller.display_name)}" required></label>`,'Save display profile')}</section><h3>Seller payment instructions</h3><p>Use synthetic payment details only. Configuration approval and delivery approval are separate actions.</p>${form('/instructions',csrf,hidden('version',seller.instruction_version)+field('instructions','Synthetic payment instructions',seller.instructions)+select('approved','Approved for sharing',options(['no','yes']),seller.instructions_approved?'yes':'no'),'Save instructions')}<p>Login: ${e(seller.login)}. Invited accounts are provisioned by the operator.</p>`;
  const active=section==='items'?'listings':section==='reviews'?'overview':section;
  return `<div class="workspace"><header class="workspace-header"><p class="eyebrow">Synthetic seller workspace</p><p>${e(seller.display_name)} · All outbound replies are simulated.</p></header><nav class="primary-nav" aria-label="Seller workspace">${Object.entries(destinations).map(([key,label])=>`<a href="${e(href(key))}"${key===active?' aria-current="page"':''}>${e(label)}</a>`).join(' ')}</nav><div class="workspace-content">${selected?`<a href="${e(back)}">Back to results</a>`:''}${content}</div></div>`;
 };
