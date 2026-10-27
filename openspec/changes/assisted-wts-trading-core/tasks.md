@@ -36,7 +36,7 @@
 
 ## 6. Complete payment fulfilment and transaction history
 
-- [ ] 6.1 Implement explicit seller verification of trusted receipt/exact amount, guarded reservation commitment and one-time stock decrement; test buyer screenshot/payment assertions, repeated confirmation, late/incorrect amounts, payment-versus-expiry/cancellation races and paid-cancellation review without automatic restocking.
+- [x] 6.1 Implement explicit seller verification of trusted receipt/exact amount, guarded reservation commitment and one-time stock decrement; test buyer screenshot/payment assertions, repeated confirmation, late/incorrect amounts, payment-versus-expiry/cancellation races and paid-cancellation review without automatic restocking.
 - [ ] 6.2 Add COD, postage and collection/drop-off arrangements with fee/location/time or recipient/address/tracking as appropriate; require seller-confirmed payment and actual collection/handover/delivery before completion, preserving intermediate posted/drop-off states and preventing another stock decrement.
 - [ ] 6.3 Add transaction history and an order/conversation activity timeline with actor/source/time/reason/version references, agreement/instruction snapshots and filters; test restart visibility, tenant isolation, replay uniqueness and absence of credentials/payment details in global logs.
 
