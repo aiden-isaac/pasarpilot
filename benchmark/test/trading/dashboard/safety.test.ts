@@ -20,6 +20,8 @@ test('authenticated HTTP boundary rejects foreign IDs forged origin CSRF and sta
   const csp=response.headers.get('content-security-policy')!;assert.ok(csp.includes("default-src 'none'"));assert.ok(!csp.includes('unsafe-inline'));assert.ok(!csp.includes('https:'));
  }
  const key=id(),card={name:'<script>syntheticUnsafe()</script>',printing:'SYN',collector:'1',language:'English',finish:'nonfoil',condition:'NM',unsold:1,price:1000};await inventory(wa,card,key);await inventory(wb,{...card,name:'PRIVATE-SELLER-B'},key);
+ const failed=await post('/inventory',{...card,name:'Keep <value>',unsold:'-1',price:'10.00',return:'/?view=inventory',password:'DO-NOT-RETAIN'} as unknown as Record<string,string>),failedHtml=await failed.text();
+ assert.equal(failed.status,409);assert.match(failedHtml,/Unsold quantity needs correction/);assert.match(failedHtml,/value="Keep &lt;value&gt;"/);assert.match(failedHtml,/aria-invalid="true"/);assert.ok(!failedHtml.includes('DO-NOT-RETAIN'));assert.ok(!failedHtml.includes('invalid-stock'));
  const html=await (await fetch(base+'/?view=inventory&id='+key,{headers:{cookie:`session=${s.token}`}})).text();assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>syntheticUnsafe'));assert.ok(!html.includes('PRIVATE-SELLER-B'));
  const order=await payable(wb);assert.equal((await post('/cancel',{id:order.order,version:'2',reason:'forged',seller_id:b.seller_id})).status,409);assert.equal((await wb.get('orders',order.order)).state,'awaiting_payment');
  for(const [view,id] of [['orders',order.order],['inventory',order.inv],['listings',order.post],['items',order.item],['conversations',order.conv]]){

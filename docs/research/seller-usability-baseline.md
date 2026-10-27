@@ -243,3 +243,20 @@ fresh browser sales pass; replay remains idempotent. Reviewed actual mobile
 `appearance/payment-review-390.png`; final critical POST returns to the owned
 order, retaining its originating navigation context. Capture uses its existing
 explicit amount/attestation; no automatic screenshot verification was added.
+
+## Task 4.3: safe recovery and progressive feedback
+
+Errors now explain corrections/current-state recovery without raw domain/SQL
+codes. Safe inventory/catalog/profile values are escaped back into existing
+controls with linked summaries and aria-invalid/describedby; old submitted
+versions remain unchanged. Passwords, receipt amounts, attestations, instructions,
+messages and addresses are not retained. Revoked/expired POST sessions prompt
+relogin. Success appears only after server acceptance. Native forms add immediate
+pending feedback and an inspect-before-retry message after an uncertain response.
+All seven dashboard checks pass (`task-16-dashboard.txt`), including a full fresh
+360px sale with JavaScript disabled. A feedback test keeps the submitting document
+visible while a separate authenticated HTTP client commits, then verifies the
+uncertain message and inspection of committed state. Its earlier native-navigation
+interception test timed out in Playwright; only its owned sandboxed test browser
+was closed, and timeout cleanup was hardened. Actual crash/ack recovery remains
+in operations acceptance. Reviewed `appearance/uncertain-response.png`.

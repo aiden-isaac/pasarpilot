@@ -11,7 +11,7 @@ import pg from 'pg';
 import { migrate } from '../../../src/trading/migrate.js';
 import { seed } from '../../../src/trading/setup.js';
 import { join } from 'node:path';
-for(const viewport of [{width:1280,height:800},{width:390,height:844}])test(`invited seller onboards and completes one RM10 sale with a backup at ${viewport.width}px`,{timeout:60000},async()=>{
+for(const viewport of [{width:1280,height:800},{width:390,height:844},{width:360,height:800,noJavaScript:true}])test(`invited seller onboards and completes one RM10 sale with a backup at ${viewport.width}px`,{timeout:60000},async()=>{
  const admin=pool('fixture'),database=`seller_ui_${process.pid}_${viewport.width}`,password=randomBytes(24).toString('hex');
  await admin.query(`CREATE DATABASE ${database}`);const provision=new pg.Pool({host:process.env.PGHOST,user:'fixture',database});
  await migrate(provision);await seed(provision,[password,randomBytes(24).toString('hex')]);const [a]=(await provision.query('SELECT * FROM trading.sources ORDER BY tenant')).rows;await provision.end();
@@ -20,7 +20,7 @@ for(const viewport of [{width:1280,height:800},{width:390,height:844}])test(`inv
  const app=await listen(p,0,mutate,view);const addr=app.address();assert.ok(addr&&typeof addr!=='string');
  let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
  try{browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
- const page=await browser.newPage({viewport});page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
+ const page=await browser.newPage({viewport,javaScriptEnabled:!('noJavaScript' in viewport)});page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
  const base=`http://127.0.0.1:${addr.port}`;
  await page.goto(base+'/?view=settings');assert.match(await page.locator('#onboarding').innerText(),/1 of 6/);assert.match(await page.locator('#guidance').innerText(),/Negotiation is disabled by default/);await page.getByLabel('Display name',{exact:true}).fill('Invited synthetic seller');await page.getByRole('button',{name:'Save display profile',exact:true}).click();assert.match(await page.locator('.workspace-header').innerText(),/Invited synthetic seller/);
  if(process.env.TRADING_UI_EVIDENCE){await page.getByRole('heading',{name:'Display profile',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:join(process.env.TRADING_UI_EVIDENCE,`onboarding-${viewport.width}.png`)});}

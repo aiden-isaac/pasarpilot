@@ -19,6 +19,7 @@ document.addEventListener('submit',event=>{
  form.setAttribute('aria-busy','true');
  for(const button of form.querySelectorAll('button'))button.disabled=true;
  const status=document.createElement('p');status.setAttribute('role','status');status.dataset.pending='true';status.textContent='Submitting… Waiting for the server result.';form.append(status);
+ setTimeout(()=>{if(!form.isConnected||form.getAttribute('aria-busy')!=='true')return;status.textContent='Response not confirmed. Inspect current state and activity before retrying. ';const link=document.createElement('a');link.textContent='Inspect current state';const destination=new URL(form.querySelector('input[name="return"]')?.value||'/',location.origin);link.href=destination.origin===location.origin&&destination.pathname==='/'?destination.href:'/';status.append(link);},15000);
 });
 addEventListener('pageshow',()=>{
  for(const form of document.querySelectorAll('form[aria-busy]')){form.removeAttribute('aria-busy');for(const button of form.querySelectorAll('button'))button.disabled=false;form.querySelector('[data-pending]')?.remove();}

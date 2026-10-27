@@ -12,16 +12,17 @@ import { login } from '../../../src/trading/auth.js';
 import { listen } from '../../../src/trading/server.js';
 import { view,mutate } from '../../../src/trading/dashboard.js';
 
-test('seller views reflow with visible keyboard focus, large targets, accessible contrast and both appearances',{timeout:60000},async()=>{
+test('seller views reflow with visible keyboard focus, large targets, accessible contrast and both appearances',{timeout:60000},async t=>{
  const [a]=await accounts(),p=pool(),password=randomBytes(24).toString('hex');
  await p.query('UPDATE trading.sellers SET password_hash=$2 WHERE id=$1',[a.seller_id,await hashPassword(password)]);
  await p.query('DELETE FROM trading.login_limits');const auth=await login(p,a.tenant,password),order=await payable(new Workspace(p,a.seller_id));
  const app=await listen(p,0,mutate,view),addr=app.address();assert.ok(addr&&typeof addr!=='string');const base=`http://127.0.0.1:${addr.port}`;
  let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
  try{
+  t.signal.addEventListener('abort',()=>void browser?.close(),{once:true});
   browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
   const context=await browser.newContext();await context.addCookies([{name:'session',value:auth.token,url:base,httpOnly:true,sameSite:'Strict'}]);
-  const page=await context.newPage();page.setDefaultTimeout(5000);
+  const page=await context.newPage();const scriptErrors:string[]=[];page.on('pageerror',error=>scriptErrors.push(error.message));page.setDefaultTimeout(5000);
   const output=process.env.TRADING_UI_EVIDENCE;if(output){assert.ok(isAbsolute(output));mkdirSync(output,{recursive:true,mode:0o700});}
   for(const colorScheme of ['light','dark'] as const){
    await page.emulateMedia({colorScheme,reducedMotion:'reduce'});
@@ -52,5 +53,17 @@ test('seller views reflow with visible keyboard focus, large targets, accessible
   assert.equal(await zoomPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   if(output)await zoomPage.screenshot({path:join(output,'zoom-200-percent-equivalent.png')});await zoom.close();
   await page.goto(`${base}/?view=orders&id=missing-owned-order`);assert.equal(await page.getByRole('alert').count(),1);
+  await page.goto(`${base}/?view=settings`);await page.clock.install();assert.deepEqual(scriptErrors,[]);
+  // Keep the submitting document visible while a separate HTTP client withholds its acknowledgement.
+  await page.locator('form[action="/profile"]').evaluate(form=>form.addEventListener('submit',event=>event.preventDefault(),{once:true}));
+  await page.getByLabel('Display name',{exact:true}).fill('Pending synthetic seller');
+  await page.getByRole('button',{name:'Save display profile',exact:true}).click();
+  assert.match(await page.locator('[data-pending]').innerText(),/Waiting for the server result/);
+  assert.equal(await page.getByRole('button',{name:'Save display profile',exact:true}).isDisabled(),true);
+  const body=await page.locator('form[action="/profile"]').evaluate(form=>new URLSearchParams([...new FormData(form as HTMLFormElement)].map(([key,value])=>[key,String(value)])).toString());
+  const saved=await context.request.post(base+'/profile',{headers:{origin:base,'content-type':'application/x-www-form-urlencoded'},data:body});assert.equal(saved.status(),200);
+  await page.clock.fastForward(15001);assert.match(await page.locator('[data-pending]').innerText(),/Response not confirmed/);
+  if(output){await page.locator('[data-pending]').scrollIntoViewIfNeeded();await page.screenshot({path:join(output,'uncertain-response.png')});}
+  await page.getByRole('link',{name:'Inspect current state',exact:true}).click();assert.match(await page.locator('.workspace-header').innerText(),/Pending synthetic seller/);
  }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
 });

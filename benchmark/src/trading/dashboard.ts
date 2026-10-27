@@ -1,4 +1,4 @@
-import { escape as e,field,form as postForm,hidden,type Mutation,type View } from './server.js';
+import { escape as e,field,form as postForm,recoverForm,hidden,type Mutation,type View } from './server.js';
 import { inventory,listing,item,type Card } from './catalog.js';
 import { sen,integer,myr,quantity } from './values.js';
 import { instructions,terms,paymentDraft,confirmPayment } from './payments.js';
@@ -58,7 +58,7 @@ export const mutate:Mutation=async(w,path,f)=>{
  }
  throw Error('not-found');
 };
-export const view:View=async(w,csrf,url)=>{
+export const view:View=async(w,csrf,url,feedback)=>{
  const param=(key:string)=>url.searchParams.get(key)??'';
  const section=param('view')||(param('order')?'orders':'overview'),selected=param('id')||param('order');
  if(!views.includes(section))throw Error('not-found');
@@ -66,7 +66,7 @@ export const view:View=async(w,csrf,url)=>{
  const seller=(await w.p.query('SELECT login,display_name,profile_version,instructions,instructions_approved,instruction_version FROM trading.sellers WHERE id=$1',[w.seller])).rows[0];
  const href=(view:string,id='',extra:Record<string,string>={})=>'/?'+new URLSearchParams({view,...(id?{id}:{}),...extra});
  const link=(view:string,id:string,label:string,extra:Record<string,string>={})=>`<a href="${e(href(view,id,{back:current,...extra}))}">${e(label)}</a>`;
- const form=(path:string,token:string,body:string,button:string)=>postForm(path,token,hidden('return',param('confirm')?safeReturn(param('back')||href('orders',selected)):current)+body,button);
+ const form=(path:string,token:string,body:string,button:string)=>recoverForm(postForm(path,token,hidden('return',param('confirm')?safeReturn(param('back')||href('orders',selected)):current)+body,button),feedback?.path===path&&(!feedback.fields.get('id')||body.includes(hidden('id',feedback.fields.get('id'))))?feedback:undefined);
  const pageInput=(key='cursor')=>({cursor:param(key)||undefined,limit:param('limit')?quantity(param('limit')):undefined});
  const pages=(page:Page,key='cursor')=>{
   const first=new URL(url);first.searchParams.delete(key);const next=new URL(first);
@@ -97,7 +97,7 @@ export const view:View=async(w,csrf,url)=>{
  if(section==='inventory'){
   content='<h2>Inventory</h2><p>Available = unsold − reserved. Prices are MYR.</p>';
   if(selected){const c=await w.get('inventory',selected);content+=`<article id="inventory-${e(c.id)}"><h3>${e(cardLabel(c))}</h3><p>Unsold ${c.unsold}; reserved ${c.reserved}; available ${c.unsold-c.reserved}</p>${form('/inventory',csrf,version(c)+cardInputs(c),'Save inventory')}${form('/policy',csrf,version(c)+`<label>Private minimum MYR (blank disables negotiation) <input name="minimum" value="${c.minimum===null?'':myr(c.minimum).slice(2)}"></label>`,'Save negotiation policy')}</article>`;}
-  else{const page=await w.select('inventory',param('q'),pageInput());content+=`<details><summary>Add inventory</summary>${form('/inventory',csrf,cardInputs({}),'Add inventory')}</details>${searchForm('Search inventory')}${empty(page.rows,'No inventory yet. Add your first variant.')}${page.rows.map(c=>`<article><h3>${link('inventory',c.id,cardLabel(c))}</h3><p>Available ${c.unsold-c.reserved} · reserved ${c.reserved} · unsold ${c.unsold} · ${myr(c.price)}</p></article>`).join('')}${pages(page)}`;}
+  else{const page=await w.select('inventory',param('q'),pageInput());content+=`<details${feedback?.path==='/inventory'?' open':''}><summary>Add inventory</summary>${form('/inventory',csrf,cardInputs({}),'Add inventory')}</details>${searchForm('Search inventory')}${empty(page.rows,'No inventory yet. Add your first variant.')}${page.rows.map(c=>`<article><h3>${link('inventory',c.id,cardLabel(c))}</h3><p>Available ${c.unsold-c.reserved} · reserved ${c.reserved} · unsold ${c.unsold} · ${myr(c.price)}</p></article>`).join('')}${pages(page)}`;}
  }
  if(section==='listings'){
   content='<h2>WTS listings</h2>';
@@ -140,5 +140,5 @@ export const view:View=async(w,csrf,url)=>{
  }
  if(section==='settings')content=`<h2>Settings & help</h2>${await checklist()}<section id="profile"><h3>Display profile</h3><p>Your display name is separate from your invited login and payment instructions.</p>${form('/profile',csrf,hidden('version',seller.profile_version)+`<label>Display name <input name="display_name" maxlength="80" autocomplete="nickname" value="${e(seller.display_name)}" required></label>`,'Save display profile')}</section><h3 id="instructions">Seller payment instructions</h3><p>Use synthetic payment details only. Configuration approval and delivery approval are separate actions.</p>${form('/instructions',csrf,hidden('version',seller.instruction_version)+field('instructions','Synthetic payment instructions',seller.instructions)+select('approved','Approved for sharing',options(['no','yes']),seller.instructions_approved?'yes':'no'),'Save instructions')}<section id="guidance"><h3>Negotiation and seller intervention</h3><p>Negotiation is disabled by default. A private minimum price is visible only to you. An offer never binds or delivers before your explicit approval.</p><p>Supported claims: <strong>claim [quantity]</strong> and <strong>backup [quantity]</strong>. Exact claims may reserve automatically for 15 minutes by database time. Ordinary inquiries do not reserve stock; backups have no reserved entitlement.</p><p>Ambiguous claims, changed sources, uncertain associations, expired holds and late or mismatched payments require seller review. Open the intervention from Overview and inspect its context before resolving it.</p><p>Approving payment instructions for sharing and approving their simulated delivery are separate actions. Buyer screenshots and payment claims remain unverified; only your trusted-account or COD receipt check can verify payment.</p><p>Posting or shop drop-off is an intermediate state. Record actual buyer delivery or collection before completing a paid order.</p></section><p>Login: ${e(seller.login)}. Invited accounts are provisioned by the operator.</p>`;
  const active=section==='items'?'listings':section==='reviews'?'overview':section;
- return `<div class="workspace"><header class="workspace-header"><p class="eyebrow">Synthetic seller workspace</p><p>${e(seller.display_name)} · All outbound replies are simulated.</p></header><nav class="primary-nav" aria-label="Seller workspace">${Object.entries(destinations).map(([key,label])=>`<a href="${e(href(key))}"${key===active?' aria-current="page"':''}>${e(label)}</a>`).join(' ')}</nav><div class="workspace-content">${selected?`<a href="${e(back)}">Back to results</a>`:''}${content}</div></div>`;
+ return `<div class="workspace"><header class="workspace-header"><p class="eyebrow">Synthetic seller workspace</p><p>${e(seller.display_name)} · All outbound replies are simulated.</p></header><nav class="primary-nav" aria-label="Seller workspace">${Object.entries(destinations).map(([key,label])=>`<a href="${e(href(key))}"${key===active?' aria-current="page"':''}>${e(label)}</a>`).join(' ')}</nav><div class="workspace-content">${selected?`<a href="${e(back)}">Back to results</a>`:''}${param('notice')==='updated'?'<p role="status">Action accepted. Current saved state is shown below.</p>':''}${content}</div></div>`;
 };
