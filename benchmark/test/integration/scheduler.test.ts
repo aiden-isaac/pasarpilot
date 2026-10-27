@@ -49,3 +49,35 @@ test('durable scheduler coalesces, bounds work, dispatches fairly and fences sta
     await store.finish(healthy, { outcome: 'completed' });
   } finally { await cleanup(); }
 });
+
+test('rollback, restart replay and consumer transaction keep accepted work and results intact', async () => {
+  assert.ok(process.env.PGHOST);
+  const root = mkdtempSync(join(tmpdir(), 'pasarpilot-replay-'));
+  const store = await SchedulerStore.open(root, true, 120_000);
+  try {
+    await store.pool.query(`CREATE FUNCTION ${store.schema}.reject_advance() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected-advance-failure'; END $$;
+      CREATE TRIGGER fail_advance BEFORE UPDATE ON ${store.schema}.schedule FOR EACH ROW EXECUTE FUNCTION ${store.schema}.reject_advance()`);
+    await assert.rejects(store.tick(), /injected-advance-failure/);
+    assert.equal((await store.status()).queue.length, 0);
+    await store.pool.query(`DROP TRIGGER fail_advance ON ${store.schema}.schedule`);
+    await store.tick();
+    const job = (await store.claim())!;
+    const event = { schemaVersion: 1 as const, eventId: 'event-1', sourceId: `${job.name}:0`, tenant: job.name,
+      sourceRevision: 0, attemptId: 'old-attempt', generation: 1, observedAt: new Date().toISOString(), eventCount: 400 };
+    await store.pool.query(`CREATE TRIGGER fail_receipt BEFORE UPDATE ON ${store.schema}.attempt FOR EACH ROW EXECUTE FUNCTION ${store.schema}.reject_advance()`);
+    await assert.rejects(store.finish(job, { outcome: 'completed', observation: event }), /injected-advance-failure/);
+    assert.equal((await store.status()).consumed, 0);
+    assert.equal((await store.boss.getJobById(job.name, job.id))!.state, 'active');
+    await store.pool.query(`DROP TRIGGER fail_receipt ON ${store.schema}.attempt`);
+    await store.finish(job, { outcome: 'completed', observation: event });
+    await store.finish(job, { outcome: 'completed', observation: event }, Date.now(), true);
+    assert.equal((await store.status()).consumed, 1);
+    const stale = (await store.claim())!;
+    await assert.rejects(store.check(stale, stale.data.deadline), /deadline-expired/);
+    await store.finish(stale, { outcome: 'skipped', error: 'deadline-expired' });
+    assert.equal((await store.status()).consumed, 1);
+  } finally {
+    await store.pool.query(`DROP SCHEMA ${store.schema} CASCADE; DROP SCHEMA ${store.queueSchema} CASCADE`);
+    await store.close(); rmSync(root, { recursive: true, force: true });
+  }
+});

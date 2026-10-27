@@ -176,6 +176,8 @@ export class SchedulerStore {
       const blocked = result.error?.includes('persistence-or-isolation') ? 'persistence-or-isolation'
         : /^(reauth-required|history-unavailable|profile-counter-ambiguous)$/.test(result.error ?? '') ? result.error : undefined;
       const delay = !recovering && !obsolete({ ...job.data, cancelled: current.data.cancelled }, s.revision, s.enabled, s.blocked, now) ? retryDelay(job.data, job.retryCount, result.error ?? '', now) : undefined;
+      if (result.observation) await c.query(`INSERT INTO ${this.schema}.consumed(tenant,source_id,event) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`,
+        [result.observation.tenant, result.observation.sourceId, result.observation]);
       if (delay !== undefined) {
         await c.query(`UPDATE ${this.queueSchema}.job SET retry_delay=$2 WHERE id=$1`, [job.id, delay]);
         await this.boss.fail(job.name, job.id, result, { db: transactionDb(c) });

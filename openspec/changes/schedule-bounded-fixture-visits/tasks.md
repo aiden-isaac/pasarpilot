@@ -21,7 +21,7 @@
 
 ## 4. Reconcile durable outcomes and fixture actions
 
-- [ ] 4.1 Associate flushed observations with logical jobs/attempts, commit completion receipts after verified browser release and implement idempotent browser-free observation import/consumer transactions with tenant/source uniqueness.
+- [x] 4.1 Associate flushed observations with logical jobs/attempts, commit completion receipts after verified browser release and implement idempotent browser-free observation import/consumer transactions with tenant/source uniqueness.
 - [ ] 4.2 Implement startup/outage reconciliation in fence-terminate-verify-replay-settle order, including local cleanup when PostgreSQL is unavailable; preserve ambiguous profile counters and malformed/truncated ledger evidence without reseeding.
 - [ ] 4.3 Add the smallest authenticated, tenant-scoped read-only fixture action-status lookup and tests for tenant isolation, existing/missing IDs and unchanged action validation.
 - [ ] 4.4 Implement explicit action dispatch with refreshed source/schedule state, durable uncertainty before send, and positive-evidence reconciliation across local `actionGate` and database records; test stale revisions, lost acknowledgements, duplicate IDs and fixture reset without blind resend.
