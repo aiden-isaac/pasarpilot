@@ -1,9 +1,7 @@
 import { Workspace } from './workspace.js';
-import { text } from './values.js';
-export async function history(w:Workspace,state='',buyer='') {
- if(state&&!['awaiting_payment','paid','completed','cancelled','expired'].includes(state))throw Error('invalid-history-state');
- if(buyer)text(buyer);
- return (await w.p.query('SELECT id,buyer,item_id,state,payment,fulfilment,quantity,unit_price,total,version FROM trading.orders WHERE seller_id=$1 AND ($2=\'\' OR state=$2) AND ($3=\'\' OR buyer=$3) ORDER BY id LIMIT 200',[w.seller,state,buyer])).rows;
+import type { PageInput } from './paging.js';
+export async function history(w:Workspace,state='',buyer='',input:PageInput={}) {
+ return w.page('orders',{...input,state,buyer});
 }
 export async function timeline(w:Workspace,order:string) {
  const o=await w.get('orders',order);

@@ -99,3 +99,14 @@ create/alter business or actual scheduler tables or update/delete audit/migratio
 records, and can still start/send/cancel/maintain its pg-boss queue. Fresh/v1/v2
 migration preservation also passes. Serving constructs the default runtime pool;
 the provisioning pool remains confined to setup/migrate commands.
+
+## Task 1.4: bounded list/history reads
+
+Default 25/max 100 keyset pages fetch one continuation row. Cursor context binds
+seller, collection and allowlisted filters. Order/message cursors retain PostgreSQL
+microseconds (including equal timestamps); catalog IDs are deterministic, not
+labelled chronological. Activity uses bigint identity order. Updated existing
+callers to the page result shape; navigation presentation follows in task 2.1.
+TypeScript/build and all 30 trading database tests pass (`task-04.txt`), including
+235 colliding inventory IDs per seller, full filtered order traversal, timestamp
+ties, foreign/incompatible/malformed cursors and invalid filters/page sizes.
