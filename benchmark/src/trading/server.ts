@@ -29,7 +29,7 @@ export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-foun
    const token=cookie('session'), auth=await session(p,token);
    if(req.method==='GET' && path==='/login') {
     const csrf=randomBytes(32).toString('hex'); res.setHeader('Set-Cookie',`login_csrf=${csrf}; HttpOnly; SameSite=Strict; Path=/; Max-Age=600`);
-    send(200,form('/login',csrf,field('login','Seller login')+field('password','Password','','password'),'Log in'));return;
+    send(200,'<section><h2>Seller sign in</h2><p>Use your operator-provided invitation. This loopback workspace uses synthetic buyers and simulated replies only; no Facebook credentials or real banking connection are required.</p>'+form('/login',csrf,field('login','Seller login')+field('password','Password','','password'),'Log in')+'</section>');return;
    }
    if(req.method==='POST') {
     if(req.headers.origin!==origin || !req.headers['content-type']?.startsWith('application/x-www-form-urlencoded')) {send(403,'Same-origin form required');return;}

@@ -2,20 +2,28 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { randomBytes } from 'node:crypto';
-import { accounts,id } from '../database/helpers.js';
+import { id } from '../database/helpers.js';
 import { pool } from '../../../src/trading/db.js';
 import { hashPassword } from '../../../src/trading/password.js';
 import { listen } from '../../../src/trading/server.js';
 import { mutate,view } from '../../../src/trading/dashboard.js';
-test('authenticated seller creates variant and post, completes one RM10 sale with a competing backup and one stock commitment',{timeout:60000},async()=>{
- const [a]=await accounts(),p=pool(),password=randomBytes(24).toString('hex');
+import pg from 'pg';
+import { migrate } from '../../../src/trading/migrate.js';
+import { seed } from '../../../src/trading/setup.js';
+import { join } from 'node:path';
+for(const viewport of [{width:1280,height:800},{width:390,height:844}])test(`invited seller onboards and completes one RM10 sale with a backup at ${viewport.width}px`,{timeout:60000},async()=>{
+ const admin=pool('fixture'),database=`seller_ui_${process.pid}_${viewport.width}`,password=randomBytes(24).toString('hex');
+ await admin.query(`CREATE DATABASE ${database}`);const provision=new pg.Pool({host:process.env.PGHOST,user:'fixture',database});
+ await migrate(provision);await seed(provision,[password,randomBytes(24).toString('hex')]);const [a]=(await provision.query('SELECT * FROM trading.sources ORDER BY tenant')).rows;await provision.end();
+ const p=new pg.Pool({host:process.env.PGHOST,user:'trading_runtime',database,max:3});
  await p.query('DELETE FROM trading.login_limits');await p.query('UPDATE trading.sellers SET password_hash=$2 WHERE id=$1',[a.seller_id,await hashPassword(password)]);
  const app=await listen(p,0,mutate,view);const addr=app.address();assert.ok(addr&&typeof addr!=='string');
  let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
  try{browser=await chromium.launch({headless:true,chromiumSandbox:true,...(process.env.TRADING_BROWSER?{executablePath:process.env.TRADING_BROWSER}:{})});
- const page=await browser.newPage();page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
+ const page=await browser.newPage({viewport});page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(10000);await page.goto(`http://127.0.0.1:${addr.port}/login`);await page.getByLabel('Seller login').fill(a.tenant);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Log in',exact:true}).click();
  const base=`http://127.0.0.1:${addr.port}`;
- await page.goto(base+'/?view=settings');await page.getByLabel('Display name',{exact:true}).fill('Invited synthetic seller');await page.getByRole('button',{name:'Save display profile',exact:true}).click();assert.match(await page.locator('.workspace-header').innerText(),/Invited synthetic seller/);
+ await page.goto(base+'/?view=settings');assert.match(await page.locator('#onboarding').innerText(),/1 of 6/);assert.match(await page.locator('#guidance').innerText(),/Negotiation is disabled by default/);await page.getByLabel('Display name',{exact:true}).fill('Invited synthetic seller');await page.getByRole('button',{name:'Save display profile',exact:true}).click();assert.match(await page.locator('.workspace-header').innerText(),/Invited synthetic seller/);
+ if(process.env.TRADING_UI_EVIDENCE){await page.getByRole('heading',{name:'Display profile',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:join(process.env.TRADING_UI_EVIDENCE,`onboarding-${viewport.width}.png`)});}
  await page.goto(base+'/?view=inventory');await page.getByText('Add inventory',{exact:true}).first().click();
  const name=`Synthetic Bolt ${id()}`,title=`WTS ${id()}`;
  const add=page.locator('form[action="/inventory"]').filter({has:page.getByRole('button',{name:'Add inventory',exact:true})});
@@ -30,7 +38,7 @@ test('authenticated seller creates variant and post, completes one RM10 sale wit
  const o=(await p.query('SELECT * FROM trading.orders WHERE seller_id=$1 AND item_id=$2',[a.seller_id,it])).rows[0];assert.ok(o);
  await page.getByText('Simulate buyer activity',{exact:true}).click();await page.locator('form[action="/synthetic"]').getByLabel('Synthetic buyer').selectOption('buyer-b');await page.locator('form[action="/synthetic"]').getByRole('button').click();
  assert.equal((await p.query("SELECT state FROM trading.claims WHERE seller_id=$1 AND item_id=$2 AND buyer='buyer-b'",[a.seller_id,it])).rows[0].state,'backup');
- await page.goto(base+'/?view=settings');const config=page.locator('form[action="/instructions"]');await config.getByLabel('Synthetic payment instructions').fill('DEMO ONLY synthetic account');await config.getByLabel('Approved for sharing').selectOption('yes');await config.getByRole('button').click();
+ await page.goto(base+'/?view=settings');const config=page.locator('form[action="/instructions"]');await config.getByLabel('Synthetic payment instructions').fill('DEMO ONLY synthetic account');await config.getByLabel('Approved for sharing').selectOption('yes');await config.getByRole('button').click();assert.match(await page.locator('#onboarding').innerText(),/6 of 6/);assert.equal((await p.query('SELECT count(*)::int n FROM trading.deliveries')).rows[0].n,0);
  await page.goto(base+'/?view=orders&id='+o.id);const order=page.locator(`#order-${o.id}`);await order.getByLabel('Agreed MYR fee').fill('0.00');await order.getByRole('button',{name:'Agree fulfilment fee',exact:true}).click();
  await page.locator(`#order-${o.id}`).getByRole('button',{name:'Propose payment request',exact:true}).click();
  const draft=(await p.query("SELECT id FROM trading.drafts WHERE seller_id=$1 AND order_id=$2 AND kind='payment'",[a.seller_id,o.id])).rows[0];
@@ -43,11 +51,11 @@ test('authenticated seller creates variant and post, completes one RM10 sale wit
  assert.equal((await p.query("SELECT count(*)::int AS n FROM trading.orders WHERE seller_id=$1 AND item_id=$2 AND payment='seller_verified'",[a.seller_id,it])).rows[0].n,1);
  assert.equal((await p.query('SELECT unsold FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].unsold,0);
  if(process.env.TRADING_SCREENSHOT){
-  await page.screenshot({path:process.env.TRADING_SCREENSHOT,fullPage:true});
+  await page.screenshot({path:process.env.TRADING_SCREENSHOT.replace('.png',`-${viewport.width}.png`),fullPage:true});
   await page.setViewportSize({width:360,height:800});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await page.screenshot({path:process.env.TRADING_SCREENSHOT.replace('.png','-mobile.png'),fullPage:true});
+  await page.screenshot({path:process.env.TRADING_SCREENSHOT.replace('.png',`-${viewport.width}-mobile.png`),fullPage:true});
  }
  assert.equal((await p.query('SELECT reserved FROM trading.inventory WHERE seller_id=$1 AND id=$2',[a.seller_id,inv])).rows[0].reserved,0);
- }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();}
+ }finally{await browser?.close();app.closeAllConnections();await new Promise<void>(r=>app.close(()=>r()));await p.end();await admin.query(`DROP DATABASE ${database}`);await admin.end();}
 });

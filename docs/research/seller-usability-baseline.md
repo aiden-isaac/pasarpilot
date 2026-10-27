@@ -207,3 +207,14 @@ reuse existing forms and the first owned listing's mapping controls. A fresh
 isolated-database test passes interrupted/out-of-order setup, other-seller
 isolation, disabled negotiation, unchanged record counts and zero deliveries or
 orders from setup alone. Build and browser profile-to-sale workflow pass.
+
+## Task 3.3: invited-seller guidance and browser onboarding
+
+Login explains operator invitation and synthetic/loopback scope. Persistent help
+explains private floors, disabled negotiation, exact claims, holds/intervention,
+separate instruction/delivery approvals, manual receipt and intermediate dispatch.
+Two sandboxed browser tests now create fresh disposable databases and complete
+onboarding plus the sale at 1280×800 and 390×844. Both pass, including checklist
+1/6→6/6 and zero deliveries before explicit response approval. Reviewed actual
+profile/checklist screenshots `appearance/onboarding-{1280,390}.png`; native forms
+stack cleanly on mobile. Fresh UI datasets are separate from retained demo data.
