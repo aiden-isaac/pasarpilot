@@ -1,5 +1,5 @@
 export const destinations={overview:'Overview',inventory:'Inventory',listings:'WTS listings',conversations:'Conversations',orders:'Orders & history',settings:'Settings & help'};
-export const views=[...Object.keys(destinations),'items','reviews'] as const;
+export const views=[...Object.keys(destinations),'items','reviews','demo'] as const;
 export function safeReturn(value:unknown):string {
  if(typeof value!=='string'||value.length>4096||!value.startsWith('/')||value.startsWith('//')||/[\\\x00-\x1f]/.test(value))return '/';
  const url=new URL(value,'http://local');

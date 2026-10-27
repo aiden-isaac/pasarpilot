@@ -86,7 +86,7 @@ export function server(p:pg.Pool,mutate:Mutation=async()=>{throw Error('not-foun
     if(path!=='/login'&&!auth){send(401,'<p role="alert">Your session expired or was revoked. Sign in again, then inspect current state before retrying. Private form details are not retained.</p><a href="/login">Sign in again</a>');return;}
     if(!f.get('csrf') || f.get('csrf')!==(path==='/login'?cookie('login_csrf'):auth?.csrf)) {send(403,'<p role="alert">This form expired or could not be verified. Refresh the current page before submitting again.</p><a href="/">Return to workspace</a>');return;}
     if(context&&path!=='/login'){
-     const allowed=['return','id','version','name','printing','collector','language','finish','condition','unsold','price','title','listing_id','inventory_id','offered','open','minimum','method','fee','display_name'];
+     const allowed=['run','event','return','id','version','name','printing','collector','language','finish','condition','unsold','price','title','listing_id','inventory_id','offered','open','minimum','method','fee','display_name'];
      context.fields=new URLSearchParams([...f].filter(([key])=>allowed.includes(key)));
     }
     let destination:string|void=undefined;

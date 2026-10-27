@@ -295,3 +295,16 @@ All 35 database and nine dashboard tests pass (`task-19-{database,dashboard}.txt
 Concurrent actual HTTP/CLI calls using stable run/step IDs get adjacent unique
 positions, one hold, safe acknowledgement-loss replay, retained conflict evidence
 and tenant isolation. Normalized envelope validation/deduplication stays shared.
+
+## Task 6.2: guided browser-only demonstration
+
+Settings links a nine-step guide. Explicit start creates one SYN/English/NM
+nonfoil RM10 unit, listing and mapping using existing catalog transactions, with
+stable run IDs and resumable partial setup. A/B buttons use stable per-run source
+identities; B requires A's live hold. The guide links existing fee, instruction,
+manual payment, collection, completion and activity controls without approving any
+step automatically. Run browsing is paged and previous records are preserved.
+Domain tests pass concurrent/replayed start, partial setup resume, A/B replay,
+foreign scope and separate run preservation. Actual browser A/B guide passes with
+zero deliveries/unverified payment and no overflow at 390/1280px; reviewed
+`appearance/guided-390.png`. The complete twice-through guide sale follows in 6.3.
