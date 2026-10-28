@@ -2,7 +2,7 @@
 
 This workspace implements the synthetic lifecycle experiment and the bounded fixture scheduler in
 `openspec/changes/benchmark-bounded-browser-lifecycle/` and `openspec/changes/archive/2026-10-27-schedule-bounded-fixture-visits/`.
-No Facebook, AI or trading integration.
+No live Facebook or AI integration. The separate synthetic seller application is described below.
 
 Use Node.js 20 or newer, then `npm ci`, `npm run check`, `npm test` from this directory.
 Dependencies are exactly pinned in the lockfile. Browser installation is separate from dependency installation.
@@ -292,4 +292,34 @@ default benchmark/scheduler visits retain their existing 400-event ledger and ow
 
 See the [setup, seller demo, recovery and acceptance report](../docs/research/assisted-wts-trading-core.md)
 for secure two-account provisioning, separate test commands and measured resource results. The approved
-change is `assisted-wts-trading-core` and remains unarchived. No live Facebook or real payment integration is enabled.
+change is [archived](../openspec/changes/archive/2026-10-28-assisted-wts-trading-core/proposal.md). No live Facebook or real payment integration is enabled.
+
+## Seller usability and operations
+
+Use the [current seller setup/demo/recovery guide](../docs/operations/seller-workspace.md)
+and [sanitised acceptance report](../docs/research/seller-usability-acceptance.md).
+The change remains unarchived with 30/32 tasks complete. The UI, onboarding,
+guarded transaction flow and bounded data/activity paths are implemented.
+Functional growth reaches 1,000 orders per seller on Kano. Jarlaxle completed
+all 240 clean sales, but its strict host swap-out gate failed during settlement;
+the two five-minute windows are incomplete. Native screen-reader verification
+is unavailable. The current prepared-host fixture recovery run is blocked by
+Jarlaxle name resolution; the historical 16-case pass is not a new result.
+
+Trading checks are separate from the browser lifecycle fixture gate:
+
+```sh
+npm run check
+npm test
+npm run test:trading:unit
+PGHOST=/absolute/private/test-dataset/socket npm run test:database
+PGHOST=/absolute/private/test-dataset/socket npm run test:trading:database
+PGHOST=/absolute/private/test-dataset/socket TRADING_BROWSER=/path/to/sandboxed/chromium npm run test:trading:dashboard
+OPERATIONS_ROOT=/absolute/private/owned-operations-dataset npm run test:trading:operations
+OPERATIONS_ROOT=/absolute/private/owned-operations-dataset OPERATIONS_RESTORE_ROOT=/absolute/private/NEW-restore-proof npm run test:trading:restore
+```
+
+Use disposable data for tests. The operations CLI takes explicit owned paths;
+the guide documents preparation and finite smoke/growth/clean stages. Do not
+reuse demonstration data for faults, shorten the clean run, relax admission,
+launch extra browsers or stop unrelated services to obtain passing results.

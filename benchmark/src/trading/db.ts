@@ -1,16 +1,22 @@
 import pg, { type PoolClient } from 'pg';
 import PgBoss from 'pg-boss';
 export type Client = PoolClient;
-export const schemaVersion = 2;
+export const schemaVersion = 3;
 export function pool(user = 'trading_runtime') {
   if (!process.env.PGHOST?.startsWith('/')) throw Error('explicit-private-PGHOST-required');
-  return new pg.Pool({ host: process.env.PGHOST, database: 'fixture', user, max: 3,
+  const p = new pg.Pool({ host: process.env.PGHOST, database: 'fixture', user, max: 3,
     connectionTimeoutMillis: 2000, statement_timeout: 5000, idle_in_transaction_session_timeout: 10000 });
+  p.on('error', () => console.error('trading-idle-connection-lost'));
+  return p;
 }
 export async function tx<T>(p: pg.Pool, work: (c: Client) => Promise<T>): Promise<T> {
   const c = await p.connect();
+  let broken = false;
+  const disconnected = () => { broken = true; };
+  c.on('error', disconnected);
   try { await c.query('BEGIN'); const result = await work(c); await c.query('COMMIT'); return result; }
-  catch (error) { await c.query('ROLLBACK'); throw error; } finally { c.release(); }
+  catch (error) { try { await c.query('ROLLBACK'); } catch { broken = true; } throw error; }
+  finally { c.removeListener('error', disconnected); c.release(broken); }
 }
 export function queue(p: pg.Pool) {
   const b = new PgBoss({ schema: 'trading_queue', db: { executeSql: (s, v) => p.query(s, v) },

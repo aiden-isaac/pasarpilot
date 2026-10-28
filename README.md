@@ -2,7 +2,9 @@
 
 PasarPilot is a planned self-hosted trading assistant for sellers in Facebook buy/sell communities, initially the Malaysian Magic: The Gathering community. Buyers would continue using comments and Messenger; sellers would manage listings, claims, conversations and fulfilment from a native dashboard.
 
-**Current status:** this repository contains a completed browser-lifecycle experiment and a tested single-slot durable fixture scheduler using PostgreSQL/pg-boss, plus research and OpenSpec artifacts. The SaaS application, production scheduler and Facebook integration have not been built.
+**Current status:** the synthetic seller application supports inventory/WTS listings, claims/backups, conversations, seller-confirmed payment, fulfilment and retained history. It now includes guided onboarding, responsive light/dark navigation, guarded actions, bounded pagination/activity checks and a repeatable RM10 demonstration. The browser-lifecycle experiment and single-slot fixture scheduler remain separate protected boundaries.
+
+The seller-usability milestone has **30/32 tasks complete**. All 240 clean synthetic sales succeeded, but Jarlaxle's resource gate failed on host swap-out growth before both settled windows completed. A native screen-reader pass is unavailable, and the current prepared-host fixture regression is blocked by host name resolution. This is not production-readiness or live Meta authorization. See the [acceptance report](docs/research/seller-usability-acceptance.md) and [setup/demo/recovery guide](docs/operations/seller-workspace.md).
 
 ## Architecture direction
 
@@ -19,7 +21,7 @@ flowchart LR
     Events --> Consumer[Browser-free consumer]
 ```
 
-The normal product should use its dashboard without a permanently running remote desktop. Temporary headed sessions can support authentication or recovery; interactive access consumes separately admitted capacity. PostgreSQL/pg-boss now backs the synthetic scheduler; production integration and selective OpenRouter inference remain future work.
+The seller application and trading worker run without a browser or permanently running remote desktop. Optional capture retains the existing isolated browser boundary. Temporary headed sessions consume separately admitted capacity. PostgreSQL/pg-boss backs both separate synthetic queues; production integration and selective OpenRouter inference remain future work.
 
 ## Completed experiment
 
@@ -60,10 +62,13 @@ npm run check
 npm test
 ```
 
-Browser execution requires a prepared Linux host with rootless Podman, cgroup v2 and working Chromium sandbox support. Follow the [benchmark runbook](benchmark/README.md) for host preparation, image builds, matched comparisons, optional modes and protected artifact handling. There is no application server or dashboard to start yet.
+Browser execution requires a prepared Linux host with rootless Podman, cgroup v2 and working Chromium sandbox support. Follow the [benchmark runbook](benchmark/README.md) for those experiments. The [seller guide](docs/operations/seller-workspace.md) starts the authenticated application on `127.0.0.1:8787` using a selected private PostgreSQL dataset.
 
 ## Documentation
 
+- [Seller usability acceptance, tests, failed gates and commit ledger](docs/research/seller-usability-acceptance.md)
+- [Invited-seller setup, browser-only RM10 demonstration, backup/restore and recovery](docs/operations/seller-workspace.md)
+- [Original assisted trading-core evidence](docs/research/assisted-wts-trading-core.md)
 - [Measured results, decision gates, limitations and implementation commits](docs/research/bounded-browser-lifecycle.md)
 - [Durable fixture scheduler results, recovery evidence and limitations](docs/research/bounded-fixture-scheduling.md)
 - [Capacity, queue latency and cost trade-offs](docs/research/bounded-browser-capacity.md), including the [864-scenario projection matrix](docs/research/bounded-browser-capacity.csv)
@@ -72,7 +77,7 @@ Browser execution requires a prepared Linux host with rootless Podman, cgroup v2
 
 ## Product and security boundaries
 
-The intended first seller workflow is WTS claims through seller-confirmed payment and collection. Inventory, negotiation, AI, billing, onboarding and the dashboard are not implemented by this experiment.
+The implemented synthetic workflow runs from WTS claims through seller-confirmed payment and collection, with deterministic optional negotiation, inventory, onboarding and dashboard controls. AI, billing, live Facebook/Messenger and real banking integrations remain excluded.
 
 - Meta authorisation remains an unresolved release gate. Seller permission alone does not authorise Facebook automation; no production Facebook automation runs here.
 - Sellers must authenticate directly in their own isolated session. PasarPilot must not collect Facebook passwords or history-unlock PINs through its dashboard.

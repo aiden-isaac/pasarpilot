@@ -41,7 +41,9 @@ const [root, container, runtime, image] = process.argv.slice(2);
 writeFileSync(root + '/database.json', JSON.stringify({ root, container, runtime, image, socket: root + '/socket' }) + '\n', { mode: 0o600 });
 JS
 attempt=0
-until "$runtime" exec "$name" pg_isready -q -U fixture -d fixture; do
+# pg_isready also accepts initialization's temporary server before the database exists.
+until "$runtime" exec "$name" sh -c 'test "$(head -n 1 /var/lib/postgresql/data/postmaster.pid)" = 1' &&
+  "$runtime" exec "$name" psql -U fixture -d fixture -Atqc 'SELECT 1' >/dev/null; do
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 30 ]; then printf 'Database not ready; retain container/logs for diagnosis.\n' >&2; exit 1; fi
   sleep 1

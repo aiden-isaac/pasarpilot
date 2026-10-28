@@ -1,14 +1,17 @@
 import { createHash,randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { tx,activity } from './db.js';
+import { tx,activity,type Client } from './db.js';
 import { envelope,type Envelope } from './envelope.js';
+import { text } from './values.js';
 export { envelope,type Envelope } from './envelope.js';
-export async function intake(p:pg.Pool,boss:PgBoss,tenant:string,value:unknown) {
- const ev=envelope(value),hash=createHash('sha256').update(JSON.stringify(ev)).digest('hex');
- return tx(p,async c=>{
-  const mapping=(await c.query('SELECT * FROM trading.sources WHERE tenant=$1 FOR UPDATE',[tenant])).rows[0];
-  if(!mapping||mapping.source!==ev.source||mapping.epoch!==ev.epoch) throw Error('invalid-source-mapping');
+async function trustedSource(c:Client,tenant:string){
+ const mapping=(await c.query('SELECT * FROM trading.sources WHERE tenant=$1 FOR UPDATE',[tenant])).rows[0];
+ if(!mapping)throw Error('invalid-source-mapping');return mapping;
+}
+async function accept(c:Client,boss:PgBoss,mapping:{seller_id:string;source:string;epoch:string},ev:Envelope){
+ const hash=createHash('sha256').update(JSON.stringify(ev)).digest('hex');
+  if(mapping.source!==ev.source||mapping.epoch!==ev.epoch) throw Error('invalid-source-mapping');
   const s=mapping.seller_id;
   if(!(await c.query('SELECT 1 FROM trading.actors WHERE seller_id=$1 AND id=$2',[s,ev.actor])).rowCount) throw Error('invalid-actor');
   const old=(await c.query('SELECT * FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3 AND event_id=$4 AND revision=$5',[s,ev.source,ev.epoch,ev.event,ev.revision])).rows[0];
@@ -26,8 +29,23 @@ export async function intake(p:pg.Pool,boss:PgBoss,tenant:string,value:unknown) 
   if(!job) throw Error('inbox-wakeup-failed');
   await activity(c,s,'event_accepted',id,ev.revision,'source','',ev.event);
   return {id,duplicate:false};
- });
 }
-export function synthetic(mapping:{source:string;epoch:string},position:number,item:string,actor='buyer-a',message='claim',event=randomUUID()):Envelope {
+export async function intake(p:pg.Pool,boss:PgBoss,tenant:string,value:unknown) {
+ const ev=envelope(value);return tx(p,async c=>accept(c,boss,await trustedSource(c,tenant),ev));
+}
+export async function generate(p:pg.Pool,boss:PgBoss,tenant:string,input:{event:string;item:string;actor:string;message:string;kind:Envelope['kind']}){
+ text(input.event);text(input.item);
+ const result=await tx(p,async c=>{
+  const mapping=await trustedSource(c,tenant);
+  if(!(await c.query('SELECT 1 FROM trading.items WHERE seller_id=$1 AND id=$2',[mapping.seller_id,input.item])).rowCount)throw Error('not-found');
+  const old=(await c.query('SELECT position,envelope FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3 AND event_id=$4 AND revision=1',[mapping.seller_id,mapping.source,mapping.epoch,input.event])).rows[0];
+  const position=old?.position??Number((await c.query('SELECT COALESCE(max(position),0)+1 AS n FROM trading.inbox WHERE seller_id=$1 AND source=$2 AND epoch=$3',[mapping.seller_id,mapping.source,mapping.epoch])).rows[0].n);
+  const ev={...synthetic({source:mapping.source,epoch:mapping.epoch},position,input.item,input.actor,input.message,input.event),kind:input.kind};
+  if(old)ev.sourceTime=old.envelope.sourceTime;
+  return accept(c,boss,mapping,envelope(ev));
+ });
+ if(result.conflict)throw Error('review-synthetic-identity-conflict');return result;
+}
+export function synthetic(mapping:{source:string;epoch:string},position:number,item:string,actor='buyer-a',message='claim',event:string=randomUUID()):Envelope {
  return {version:1,...mapping,event,object:event,revision:1,position,kind:'reply',actor,post:null,item,parent:item,thread:`thread-${actor}-${item}`,sourceTime:new Date().toISOString(),text:message,deleted:false};
 }

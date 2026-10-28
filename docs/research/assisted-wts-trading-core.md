@@ -2,7 +2,7 @@
 
 Date: 2026-10-28 (Singapore). Change: `assisted-wts-trading-core`, spec-driven, 29 tasks.
 
-The synthetic MVP completes one authenticated RM10.00 sale with one stock commitment and a competing backup. It uses the existing TypeScript workspace, pinned PostgreSQL 17.11, pg 8.23.1, pg-boss 10.4.2 and Playwright 1.64.1. No dependencies were added. The change remains unarchived; no commits were pushed or squashed.
+The synthetic MVP completes one authenticated RM10.00 sale with one stock commitment and a competing backup. It uses the existing TypeScript workspace, pinned PostgreSQL 17.11, pg 8.23.1, pg-boss 10.4.2 and Playwright 1.64.1. No dependencies were added. The change was [archived on 2026-10-28](../../openspec/changes/archive/2026-10-28-assisted-wts-trading-core/proposal.md) after syncing all four capability specs; no commits were pushed or squashed.
 
 ## Delivered behavior
 
@@ -48,11 +48,11 @@ Open `http://127.0.0.1:8787/login` locally or through an SSH tunnel; log in as `
 8. Save a synthetic collection location and ISO meeting time. Record actual collection with a reason/evidence, then **Complete transaction**.
 9. Open the order timeline from transaction history. A is completed, B unfulfilled, and there is one verified sale. Repeated delivery/payment/completion commands do not repeat their effects.
 
-For browser-free operator-generated events, use the displayed item comment ID:
+For browser-free operator-generated events, use the displayed item comment ID. The seller-usability generator now requires a distinct stable event ID for each intended event as its fifth argument; retain and reuse that ID after an uncertain response:
 
 ```bash
-node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-a 'claim'
-node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-b 'claim'
+node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-a 'claim' STABLE_EVENT_A_ID
+node dist/src/trading/cli.js generate seller-a ITEM_ID buyer-b 'claim' STABLE_EVENT_B_ID
 ```
 
 Cancellation/expiry, ambiguity and negotiation scenarios are intentionally separate from the paid sale. Unpaid cancellation releases once and promotes a fillable same-item backup. Other listing comments require explicit promotion. Conditional text such as `claim if NM` creates a review, not an entitlement. Negotiation is disabled until a private minimum is set. A price offer proposes acceptance/countering but reserves nothing before seller approval.
@@ -98,7 +98,7 @@ PGHOST=/absolute/private/test-dataset/socket TRADING_BROWSER=/path/to/installed/
 PGHOST=/absolute/private/test-dataset/socket npm run test:database
 SCHEDULER_DATA_ROOT=/absolute/private/prepared-idle-scheduler-dataset npm run test:fixture
 # From the repository root:
-openspec validate assisted-wts-trading-core --strict
+openspec validate --specs --strict
 ```
 
 Tests create synthetic records in an explicitly selected private test dataset. Keep test datasets separate from manual/demo workspaces. No test resets a seller schema or commits runtime datasets. The prepared-host regression deliberately exercises browser crashes and selected fixture/database restarts, so it requires an idle owned fixture dataset. Its survivor case correctly used SIGKILL only after the existing 15-second grace period.
@@ -174,7 +174,7 @@ Meta authorization and real-platform identity, ordering/completeness and messagi
 
 ## Atomic task commits
 
-Each row is one completed task, in tasks.md order. The last row is the acceptance/report commit itself; the final handoff supplies its exact hash.
+Each row is one completed task, in tasks.md order. The last row is the acceptance/report commit. Archival is recorded in a separate subsequent commit.
 
 | Hash | Conventional Commit message |
 | --- | --- |
@@ -206,4 +206,4 @@ Each row is one completed task, in tasks.md order. The last row is the acceptanc
 | 5354bae | test(trading): demonstrate authenticated RM10 sale with backup and collection |
 | 177ad7f | test(trading): cover tenant boundaries revisions review and reservation races |
 | 2b16f3b | test(fixtures): verify bounded browser capture through authenticated completed sale |
-| HEAD (this report) | test(trading): complete acceptance guards and publish operator runbook |
+| bc2cbc1 | test(trading): complete acceptance guards and publish operator runbook |

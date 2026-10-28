@@ -16,6 +16,8 @@
     "trading": "node dist/src/trading/cli.js",
     "test:trading:unit": "npm run build && node --test dist/test/trading/unit/*.test.js",
     "test:trading:database": "npm run build && node --test --test-concurrency=1 dist/test/trading/database/*.test.js",
+    "test:trading:operations": "npm run build && node --test --test-concurrency=1 dist/test/trading/operations/*.test.js",
+    "test:trading:restore": "npm run build && node --test dist/test/trading/restore/*.test.js",
     "test:trading:dashboard": "npm run build && node --test --test-concurrency=1 dist/test/trading/dashboard/*.test.js"
   },
   "dependencies": {
