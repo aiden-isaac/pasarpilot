@@ -13,6 +13,7 @@ import { migrate } from './migrate.js';
 import { seed } from './setup.js';
 import { Latencies,OperationsMetrics,instrument } from './operations-metrics.js';
 import { holdLock } from '../ownership.js';
+import { growthProbe } from './operations-growth.js';
 
 export const operationLimits=Object.freeze({sellers:2,cycles:120,cadenceMs:30000,durationMs:3600000,planned:240,baselineMs:60000,settledMs:300000,databaseGrowthBytes:512*1024**2,evidenceBytes:256*1024**2});
 export function stableRun(seed:string,seller:string,cycle:number){
@@ -40,15 +41,21 @@ export class Evidence{
  failure?:string;
  readonly reads=new Latencies();readonly mutations=new Latencies();
  readonly visibility=new Latencies();
+ readonly operations=new Map<string,{method:string;latency:Latencies}>();
  constructor(readonly output:string){ownedDirectory(output);this.fd=openSync(join(output,'events.jsonl'),'wx',0o600);}
- write(value:Record<string,unknown>){if(value.type==='request'&&typeof value.ms==='number')(value.method==='GET'?this.reads:this.mutations).add(value.ms);if(value.type==='visibility'&&typeof value.ms==='number')this.visibility.add(value.ms);const line=JSON.stringify({time:new Date().toISOString(),...value})+'\n';try{if(this.bytes+Buffer.byteLength(line)>operationLimits.evidenceBytes)throw Error('evidence-limit');if(writeSync(this.fd,line)!==Buffer.byteLength(line))throw Error('partial-evidence-write');this.bytes=fstatSync(this.fd).size;}catch(error){this.failure??='evidence-write-failed';throw error;}}
+ write(value:Record<string,unknown>){if(value.type==='request'&&typeof value.ms==='number'){
+  (value.method==='GET'?this.reads:this.mutations).add(value.ms);const url=new URL(String(value.path),'http://127.0.0.1'),kind=url.pathname==='/'?[url.searchParams.get('view')??'overview',url.searchParams.has('id')?'detail':'list',url.searchParams.has('state')?'filtered':'',url.searchParams.get('child')??''].join(':'):url.pathname,key=String(value.method)+':'+kind;
+  if(!this.operations.has(key)){if(this.operations.size>=32)throw Error('operation-kind-limit');this.operations.set(key,{method:String(value.method),latency:new Latencies()});}const observed=this.operations.get(key)!;observed.latency.add(value.ms);const stats=observed.latency.snapshot();if(stats.count>=20&&stats.p95Ms>(observed.method==='GET'?500:1000))this.failure??='operation-latency-gate:'+key;
+ }if(value.type==='visibility'&&typeof value.ms==='number')this.visibility.add(value.ms);const line=JSON.stringify({time:new Date().toISOString(),...value})+'\n';try{if(this.bytes+Buffer.byteLength(line)>operationLimits.evidenceBytes)throw Error('evidence-limit');if(writeSync(this.fd,line)!==Buffer.byteLength(line))throw Error('partial-evidence-write');this.bytes=fstatSync(this.fd).size;}catch(error){this.failure??='evidence-write-failed';throw error;}}
  outcome(value:{seller:string;cycle:number;started:boolean;ok:boolean;reason?:string}){this.counts.planned++;if(value.started)this.counts.attempted++;else this.counts.notAttempted++;if(value.ok)this.counts.passed++;else this.counts.failed++;this.write({type:'outcome',...value});}
  close(){closeSync(this.fd);}
 }
 export async function prepareOperations(root:string,runtime:string){
  if(!isAbsolute(root)||existsSync(root)||!['podman','docker'].includes(runtime))throw Error('new-explicit-operations-root-required');
  ownedDirectory(dirname(root));mkdirSync(root,{mode:0o700});ownedDirectory(root);
- writeJson(join(root,'operations.json'),{purpose:'disposable-seller-operations-v1',root,host:hostname(),id:randomUUID(),createdAt:new Date().toISOString(),revision:process.env.BENCH_REVISION??execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),limits:operationLimits,sourceDirty:process.env.BENCH_REVISION?false:!!execFileSync('git',['status','--porcelain','--','src','test','package.json','package-lock.json'],{encoding:'utf8'}).trim(),sourceArchiveSha256:process.env.BENCH_ARCHIVE_SHA256??null});
+ const revision=process.env.BENCH_REVISION??execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+ const sourceDirty=process.env.BENCH_REVISION?!/^[a-f0-9]{40}$/.test(revision):!!execFileSync('git',['status','--porcelain','--','src','test','package.json','package-lock.json'],{encoding:'utf8'}).trim();
+ writeJson(join(root,'operations.json'),{purpose:'disposable-seller-operations-v1',root,host:hostname(),id:randomUUID(),createdAt:new Date().toISOString(),revision,limits:operationLimits,sourceDirty,sourceArchiveSha256:process.env.BENCH_ARCHIVE_SHA256??null});
  execFileSync('sh',['prepare-scheduler-db.sh',root,runtime],{stdio:['ignore','ignore','pipe'],timeout:120000});
  process.env.PGHOST=join(root,'socket');const p=pool('fixture');
  try{await migrate(p);const passwords=[randomBytes(24).toString('hex'),randomBytes(24).toString('hex')],ids=await seed(p,passwords);writeJson(join(root,'accounts.json'),ids.map((seller,i)=>({seller,login:['seller-a','seller-b'][i],password:passwords[i]})));}finally{await p.end();}
@@ -85,12 +92,13 @@ export async function sale(p:pg.Pool,client:Awaited<ReturnType<typeof httpClient
  assert.equal(result.state,'completed');assert.equal(result.payment,'seller_verified');assert.equal(result.unsold,0);assert.equal(result.reserved,0);assert.equal(result.commits,1);assert.equal(result.backup,'unfulfilled');
  await client.get('/?view=orders&state=completed');await client.get(back+'&child=activity');await client.get('/?view=inventory&q=RM10');await client.get('/updates');return o.id as string;
 }
-export async function workload(root:string,base:string,p:pg.Pool,stage:'smoke'|'clean',report:Evidence,guard:()=>string|undefined){
- const {record}=dataset(root),accounts=accountsFor(root),cycles=stage==='clean'?operationLimits.cycles:1,start=Date.now();
+export async function workload(root:string,base:string,p:pg.Pool,stage:'smoke'|'clean'|'growth',report:Evidence,guard:()=>string|undefined,checkpoint?: (target:number)=>Promise<void>){
+ const {record}=dataset(root),accounts=accountsFor(root),cycles=stage==='clean'?operationLimits.cycles:stage==='growth'?1000:1,start=Date.now();
  report.write({type:'plan',stage,start,planned:cycles*2,cyclesPerSeller:cycles,concurrencyCeiling:2,cadenceMs:stage==='clean'?operationLimits.cadenceMs:0,limits:operationLimits,revision:record.revision});
  const clients:Awaited<ReturnType<typeof httpClient>>[]=[];for(const account of accounts){const client=await httpClient(base,account,report,guard),seller=(await p.query('SELECT profile_version,instruction_version FROM trading.sellers WHERE id=$1',[account.seller])).rows[0];await client.post('/profile',{version:String(seller.profile_version),display_name:'Synthetic operations '+account.login,return:'/?view=settings'});await client.post('/instructions',{version:String(seller.instruction_version),instructions:'DEMO ONLY synthetic account',approved:'yes',return:'/?view=settings'});clients.push(client);}
+ let from=0;for(const target of stage==='growth'?[250,1000]:[cycles]){
  await Promise.all(accounts.map(async(account,index)=>{
-  for(let cycle=0;cycle<cycles;cycle++){
+  for(let cycle=from;cycle<target;cycle++){
    const due=start+(stage==='clean'?cycle*operationLimits.cadenceMs:0);
    if(!guard()&&due>Date.now())await delay(due-Date.now());
    const stopped=guard();if(stopped){report.outcome({seller:account.seller,cycle,started:false,ok:false,reason:stopped});continue;}
@@ -98,6 +106,8 @@ export async function workload(root:string,base:string,p:pg.Pool,stage:'smoke'|'
    try{await sale(p,clients[index]!,account.seller,stableRun(record.id+':'+stage,account.seller,cycle),report);report.outcome({seller:account.seller,cycle,started:true,ok:true});}catch{report.outcome({seller:account.seller,cycle,started:true,ok:false,reason:guard()??'scenario-failed'});}
   }
  }));
+ if(stage==='growth'){if(guard()||report.counts.failed)throw Error('growth-admission-or-transaction-failed');await growthProbe(p,accounts,clients,accounts.map(a=>stableRun(record.id+':growth',a.seller,0)),target,report,guard);await checkpoint?.(target);}from=target;
+ }
  if(stage==='clean'&&!guard()&&Date.now()<start+operationLimits.durationMs)await delay(start+operationLimits.durationMs-Date.now());
  assert.equal(report.counts.planned,cycles*2);return report.counts;
 }
@@ -115,8 +125,8 @@ async function stopOwned(child:ChildProcess){
  let timer:ReturnType<typeof setTimeout>|undefined;await Promise.race([exited,new Promise<void>(r=>{timer=setTimeout(r,30000);})]);if(timer)clearTimeout(timer);
  if(child.exitCode===null&&!child.signalCode){child.kill('SIGKILL');await exited;}
 }
-export async function runOperations(root:string,output:string,stage:'smoke'|'clean'){
- operationsSelfCheck();const {record,database}=dataset(root),report=evidence(root,output),planned=stage==='clean'?operationLimits.planned:2;
+export async function runOperations(root:string,output:string,stage:'smoke'|'clean'|'growth'){
+ operationsSelfCheck();const {record,database}=dataset(root),report=evidence(root,output),planned=stage==='clean'?operationLimits.planned:stage==='growth'?2000:2;
  const locks=join(root,'locks');if(!existsSync(locks))mkdirSync(locks,{mode:0o700});ownedDirectory(locks);const lock=await holdLock(join(locks,'operations.lock'));
  const logs=openSync(join(output,'application.log'),'wx',0o600),child=fork(fileURLToPath(import.meta.url),['serve-owned',root],{env:{PATH:process.env.PATH,LANG:'C.UTF-8',PGHOST:join(root,'socket')},stdio:['ignore',logs,logs,'ipc']});
  process.env.PGHOST=join(root,'socket');const p=pool();let metrics:OperationsMetrics|undefined,timer:ReturnType<typeof setInterval>|undefined,busy=false,phase='startup',signal:string|undefined,telemetry:any,window:{phase:string;count:number;sum:number;start:number;end:number}|undefined;
@@ -131,8 +141,8 @@ export async function runOperations(root:string,output:string,stage:'smoke'|'cle
   const ready=await new Promise<{base:string;telemetry:any}>((resolve,reject)=>{timeout=setTimeout(()=>reject(Error('application-readiness-timeout')),30000);child.on('message',(message:any)=>{if(message.type==='ready')resolve(message);if(message.type==='telemetry'){telemetry=message.value;if(metrics)metrics.latestTelemetry=telemetry;}if(message.type==='startup-error')reject(Error(message.code));});child.once('exit',()=>reject(Error('application-startup-exit')));child.once('error',reject);}).finally(()=>{if(timeout)clearTimeout(timeout);});
   metrics=new OperationsMetrics(root,output,child.pid!,database,value=>report.write(value));metrics.latestTelemetry=telemetry??ready.telemetry;
   assert.equal((await p.query('SELECT current_user')).rows[0].current_user,'trading_runtime');result.runtimeRole='trading_runtime';
-  const initial=await metrics.storage(p,'initial');result.initial=initial;phase='baseline';await sample();timer=setInterval(()=>void sample(),1000);await wait(operationLimits.baselineMs);if(guard())throw Error('baseline-admission-denied');
-  phase=stage;result.outcomes=await workload(root,ready.base,p,stage,report,guard);if(report.counts.failed)throw Error('planned-transaction-failed');
+  const initial=await metrics.storage(p,'initial');result.initial=initial;if(stage==='growth'||stage==='clean')assert.equal(initial.orders.length,0,'fresh-separate-stage-dataset-required');phase='baseline';await sample();timer=setInterval(()=>void sample(),1000);await wait(operationLimits.baselineMs);if(guard())throw Error('baseline-admission-denied');
+  phase=stage;result.outcomes=await workload(root,ready.base,p,stage,report,guard,async target=>{await metrics!.storage(p,'growth-'+target);});if(report.counts.failed)throw Error('planned-transaction-failed');
   phase='drain';let settled=await metrics.storage(p,phase);
   if(stage==='clean'){
    const deadline=Date.now()+16*60000;
@@ -142,10 +152,10 @@ export async function runOperations(root:string,output:string,stage:'smoke'|'cle
    assert.ok(metrics.summary.windows[1]!.meanRss<=metrics.summary.windows[0]!.meanRss+64*1024**2);
   }
   result.final=await metrics.storage(p,'final');assert.equal(result.final.commits-initial.commits,planned);assert.equal(result.final.inbox.pending,0);assert.equal(result.final.held,0);
-  result.latency={reads:report.reads.snapshot(),mutationsWithRedirect:report.mutations.snapshot(),syntheticVisibility:report.visibility.snapshot()};assert.ok(result.latency.reads.p95Ms<=500);assert.ok(result.latency.mutationsWithRedirect.p95Ms<=1000);assert.ok(result.latency.syntheticVisibility.p95Ms<=10000);if(guard())throw Error('resource-gate-failed');result.status='passed';
+  result.latency={reads:report.reads.snapshot(),mutationsWithRedirect:report.mutations.snapshot(),syntheticVisibility:report.visibility.snapshot(),operations:[...report.operations].map(([name,v])=>({name,method:v.method,...v.latency.snapshot()}))};assert.ok(result.latency.reads.p95Ms<=500);assert.ok(result.latency.mutationsWithRedirect.p95Ms<=1000);assert.ok(result.latency.syntheticVisibility.p95Ms<=10000);for(const value of result.latency.operations)assert.ok(value.p95Ms<=(value.method==='GET'?500:1000),'operation-latency-gate:'+value.name);if(guard())throw Error('resource-gate-failed');result.status='passed';
  }catch(error){result.status=metrics?.abort?'failed':phase==='startup'||phase==='baseline'?'blocked':'failed';result.reason=guard()??(error instanceof Error?error.message:'operations-failed');}
  finally{
-  if(timer)clearInterval(timer);while(busy)await delay(20);result.resources=metrics?.summary;result.lastTelemetry=metrics?.latestTelemetry;result.outcomes={...report.counts,planned,recorded:report.counts.planned,failed:planned-report.counts.passed,notAttempted:planned-report.counts.attempted};result.finishedAt=new Date().toISOString();
+  if(timer)clearInterval(timer);while(busy)await delay(20);result.resources=metrics?.summary;result.lastTelemetry=metrics?.latestTelemetry;result.latency={reads:report.reads.snapshot(),mutationsWithRedirect:report.mutations.snapshot(),syntheticVisibility:report.visibility.snapshot(),operations:[...report.operations].map(([name,v])=>({name,method:v.method,...v.latency.snapshot()}))};result.outcomes={...report.counts,planned,recorded:report.counts.planned,failed:planned-report.counts.passed,notAttempted:planned-report.counts.attempted};result.finishedAt=new Date().toISOString();
   try{writeJson(join(output,'summary.json'),result);if(!report.failure)report.write({type:'summary',...result});}
   finally{await stopOwned(child);closeSync(logs);await p.end();lock.stdin.end();await new Promise<void>(r=>lock.once('exit',()=>r()));report.close();process.off('SIGINT',interrupted);process.off('SIGTERM',interrupted);}
  }
@@ -161,6 +171,6 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
  if(command==='self-check')console.log(JSON.stringify(operationsSelfCheck()));
  else if(command==='prepare')console.log(JSON.stringify(await prepareOperations(root!,argument!)));
  else if(command==='serve-owned')await serveOwned(root!);
- else if(command==='smoke'||command==='clean'){const result=await runOperations(root!,argument!,command);console.log(JSON.stringify({status:result.status,planned:result.planned,outcomes:result.outcomes,output:argument}));if(result.status!=='passed')process.exitCode=1;}
- else throw Error('operations: self-check | prepare NEW_ROOT podman|docker | smoke|clean ROOT NEW_EVIDENCE_PATH');
+ else if(command==='smoke'||command==='clean'||command==='growth'){const result=await runOperations(root!,argument!,command);console.log(JSON.stringify({status:result.status,planned:result.planned,outcomes:result.outcomes,output:argument}));if(result.status!=='passed')process.exitCode=1;}
+ else throw Error('operations: self-check | prepare NEW_ROOT podman|docker | smoke|clean|growth ROOT NEW_EVIDENCE_PATH');
 }

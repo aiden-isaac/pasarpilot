@@ -414,3 +414,46 @@ Terminal replays retain identical payment/stock state, delivery count and audit
 count. Revoked/expired requests return 401 for both update reads and writes.
 The new restart assertion and nine focused existing database assertions pass;
 TypeScript passes. All manipulated deadlines remain in disposable test data.
+
+## Task 7.6: growth implementation and incomplete host acceptance
+
+Implemented the fixed 250/1,000-order-per-seller growth plan over normal HTTP
+sales, with two serial seller streams, complete paged traversal without history
+aggregation, 235 related items and 235 additional messages per seller/checkpoint,
+late-page edits/association, repeated list/filter/detail/update reads and actual
+query plans. Operation-specific bounded histograms prevent a fast route masking
+a slow one; mature p95 violations stop admission. Failure samples now retain
+the concurrent resource observations and initial swap counter.
+
+The first Jarlaxle attempt exposed a correlated timeline subquery: 4,389 draft
+scans and 608,429 shared block hits for 14 rows, taking 2,712.909ms. Replacing
+the correlated reference predicate with uncorrelated seller-scoped reference
+sets measured 3.527ms for the same 14 rows. No index or schema change was needed.
+Both long-history tests, all 36 database tests, seven units and TypeScript pass.
+
+The next attempt passed both 250-order checkpoints: complete pages/related
+records/late edits, domain page p95 3ms, timeline HTTP p95 9ms, updates 3ms.
+It stopped on host swap-out growth after 596 successful scenarios. Only the
+three retired, label/owner-verified test database containers were then stopped,
+with data retained; no unrelated service was touched.
+
+The single-database retry also passed 250 per seller (page p95 4ms), then stopped
+on one 4,096-byte host swap-out increment. Its 2,000 planned denominator records
+1,393 attempted, 1,391 passed, 609 failed/not admitted (607 not attempted). Actual
+durable state contains 696 completed per seller and one remaining unpaid hold:
+one completed transaction lost its final scenario acknowledgement during abort.
+There are zero negative/over-reserved stock violations. Database growth was
+34,152,448 bytes; 211 one-second samples have no gaps, maximum simultaneous app
+RSS plus database memory 1,009,950,720 bytes (failure sample 1,017,143,296), runner
+maximum 179,712,000 bytes and minimum host available 5,707,849,728 bytes. Memory
+stayed inside the envelope; the strict no-swap-growth gate failed nonetheless.
+
+Private roots `operations-growth-01`, `-02` and `-03` retain failed attempts,
+plans, samples and post-abort state. Their explicitly labelled uncommitted
+runtime archives are retained; the third SHA256 is
+`19d6a288cfb7c1e5606fd4246ac41d9ccf670ccc44e2cff1eba0f519d38204c9`.
+These development preparations incorrectly set `sourceDirty=false` for explicit
+non-commit labels; preparation now identifies such labels as dirty. Historical
+evidence is preserved rather than rewritten. Task 7.6 remains unchecked because
+1,000 orders per seller were not safely reached. Do not describe partial growth
+as a successful resource/capacity gate or relax host controls to force a pass.

@@ -20,6 +20,7 @@ test('operations enforce finite load, private owned paths and an honest planned 
   const link=join(root,'linked');symlinkSync(publicDir,link);assert.throws(()=>ownedDirectory(link),/outside-workspace/);
   const report=new Evidence(publicDir);try{report.outcome({seller:'a',cycle:0,started:true,ok:true});report.outcome({seller:'b',cycle:0,started:true,ok:false});report.outcome({seller:'a',cycle:1,started:false,ok:false,reason:'admission-stopped'});assert.deepEqual(report.counts,{planned:3,attempted:2,passed:1,failed:2,notAttempted:1});}finally{report.close();}
   assert.equal(readFileSync(join(publicDir,'events.jsonl'),'utf8').trim().split('\n').length,3);
+  const slow=join(root,'slow');mkdirSync(slow,{mode:0o700});const rejected=new Evidence(slow);try{for(let i=0;i<20;i++)rejected.write({type:'request',method:'GET',path:'/updates',ms:501});assert.equal(rejected.failure,'operation-latency-gate:GET:/updates');assert.equal(rejected.operations.size,1);}finally{rejected.close();}
  }finally{rmSync(root,{recursive:true});}
 });
 test('operation telemetry preserves pg promise and callback results and reads the actual process',async()=>{

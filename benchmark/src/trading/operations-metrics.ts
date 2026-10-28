@@ -53,11 +53,13 @@ export class OperationsMetrics{
   const cpu=readFileSync(join(this.cgroup,'cpu.max'),'utf8').trim().split(/\s+/).map(Number);if(cpu.length!==2||!Number.isFinite(cpu[0])||cpu[0]! / cpu[1]! !== 1)throw Error('database-cpu-cap-required');
   this.initialSwap=sampleHost().swapOutPages;this.initialDisk=Number(statfsSync(root).bavail)*Number(statfsSync(root).bsize);
   if(!Number.isFinite(this.ticks)||this.ticks<=0||!Number.isFinite(this.pageBytes)||this.initialDisk<2*1024**3)throw Error('calibration-or-disk-headroom-unavailable');
-  this.write({type:'resource-contract',ticksPerSecond:this.ticks,pageBytes:this.pageBytes,serviceAllowance:defaults.futureReserve,databaseAllowance:768*1024**2,databaseSwap:0,databaseCpu:cpu[0]!/cpu[1]!,hostGuard:guardBytes(sampleHost().total),databaseLabelsVerified:true});
+  this.write({type:'resource-contract',ticksPerSecond:this.ticks,pageBytes:this.pageBytes,initialSwapOutPages:this.initialSwap,serviceAllowance:defaults.futureReserve,databaseAllowance:768*1024**2,databaseSwap:0,databaseCpu:cpu[0]!/cpu[1]!,hostGuard:guardBytes(sampleHost().total),databaseLabelsVerified:true});
  }
  sample(phase:string){
+  let observed:Record<string,unknown>|undefined;
   try{
    const host=sampleHost(),app=processResources(this.pid,this.ticks),runner={pid:process.pid,rss:process.memoryUsage().rss,cpu:process.cpuUsage()},database=sampleAttempt(this.cgroup),combined=app.rss+(database.memory??0),disk=statfsSync(this.root);
+   observed={host,app,runner,database,combinedConservativeBytes:combined};
    this.pressure.check(host);if(host.swapOutPages>this.initialSwap)throw Error('host-swap-out-growth');
    if(!database.memory||database.swapMax!==0||database.memoryMax!==768*1024**2||!database.cpu||!database.events||database.events.oom||database.events.oom_kill||database.swap)throw Error('database-accounting-or-oom');
    if(combined>defaults.futureReserve)throw Error('service-envelope');if(host.available<guardBytes(host.total)+defaults.futureReserve)throw Error('host-headroom');
@@ -66,7 +68,7 @@ export class OperationsMetrics{
    if(this.lastSample&&host.time-this.lastSample>2500){this.summary.missing++;throw Error('missing-one-second-samples');}this.lastSample=host.time;
    this.summary.samples++;this.summary.maxCombinedBytes=Math.max(this.summary.maxCombinedBytes,combined);this.summary.maxRunnerRss=Math.max(this.summary.maxRunnerRss,runner.rss);this.summary.minAvailableBytes=Math.min(this.summary.minAvailableBytes,host.available);
    this.write({type:'resources',phase,host,app,runner,database,combinedConservativeBytes:combined,telemetry:this.latestTelemetry});return app.rss;
-  }catch(error){this.abort??=error instanceof Error?error.message:'resource-sample-failed';this.write({type:'resource-failure',phase,code:this.abort});return undefined;}
+  }catch(error){this.abort??=error instanceof Error?error.message:'resource-sample-failed';this.write({type:'resource-failure',phase,code:this.abort,observed});return undefined;}
  }
  async storage(p:pg.Pool,phase:string){
   const snapshot=await storageSnapshot(p),dataBytes=diskUsage(join(this.root,'postgres')).allocatedBytes;
