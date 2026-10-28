@@ -545,3 +545,27 @@ computer-use surfaces are unavailable. No native screen-reader listening pass
 was performed, and an accessibility-tree check is not claimed as a substitute.
 Task 8.1 remains unchecked for that explicit missing verification. No system
 packages or unrelated desktop services were installed or changed to bypass it.
+
+## Task 8.2: operator guide and separate current/legacy restores
+
+Published [the seller workspace guide](../operations/seller-workspace.md) with
+private setup, invitations, the browser-only RM10 flow, non-destructive repeat,
+uncertain-response inspection, verified restart/socket privacy, expiry, streamed
+backup, separate restore and non-destructive rollback/downgrade limits. It leaves
+Meta authorization and secure external-access requirements unresolved.
+
+The executable restore test passes against `restore-proof-03`: a streamed current
+backup restores into a new owned private database and exactly matches 1,161 rows
+across 27 business/queue tables in pages of at most 100 before startup. Separate
+new v1/v2 copies are backed up/restored, upgraded on both sides and compared for
+retained financial/source/history data; expected new v3 fields/application times
+are excluded from legacy equality only. Both legacy workers restart with valid
+login and unchanged verified stock. Current restore checks restricted audit/
+migration grants, revokes restored sessions, signs in both sellers and retains
+paid stock after startup. TypeScript and the 11.3-second restore test pass.
+
+Private dumps, error attempts and databases remain outside Git under the selected
+source's `evidence/backup-*` and separate restore roots. The first current-schema
+proof also passed; a later legacy harness comparison initially treated fresh
+migration timestamps as old retained data, then was corrected. No source data,
+live seller dataset or existing schema was downgraded or overwritten.
