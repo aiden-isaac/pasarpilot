@@ -333,3 +333,28 @@ private path/symlink checks and honest failed/not-attempted accounting. No soak
 was started before resource instrumentation/admission (7.2). Read-only SSH confirms
 Jarlaxle is reachable with Podman and the retained Node 22.23.4 toolchain; the
 preliminary point sample is not substituted for the required measured baseline.
+
+## Task 7.2: measured admission and service instrumentation
+
+Added actual child application/worker RSS and calibrated process CPU, separate
+runner accounting, concurrent capped database cgroup observations, host CPU/PSI/
+swap, bounded query/pool/request histograms, backlog age and table/index/storage
+snapshots. Sampling gaps, telemetry loss, pressure, swap-out growth, memory and
+disk/evidence limits stop admission. The clean stage includes fixed-record drained
+five-minute windows; their acceptance remains task 7.7, not the smoke result.
+Provisioning now waits for the final PostgreSQL process and a successful query
+against the actual database: the previous readiness probe accepted its temporary
+initialisation server before database creation. Failed provisioning is retained.
+
+TypeScript and seven units pass, including promise/callback instrumentation.
+The local smoke correctly failed on host swap-out growth before sales; it is not
+counted as a pass. Jarlaxle's separate `operations-task23/evidence/smoke-01` passed
+both planned sales after 61 baseline samples with zero missing samples: combined
+concurrent app RSS plus database cgroup maximum 161,726,464 bytes, runner maximum
+75,898,880 bytes, minimum host available 6,555,041,792 bytes. Client p95 reads 17ms,
+mutations including redirect 62ms, synthetic visibility 82ms; database grew
+409,600 bytes. This development smoke used the explicitly labelled uncommitted
+task-23 runtime archive SHA256
+`2e28f1c357fcc9c51592cb3f13a0c5c3a6e7d58e7a23c2194870dac51e3229a2`.
+No unrelated services changed. Future expiry wakeups remain visible in evidence;
+smoke does not assert settled queue or sustained capacity.
