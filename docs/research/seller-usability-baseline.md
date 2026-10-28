@@ -569,3 +569,24 @@ source's `evidence/backup-*` and separate restore roots. The first current-schem
 proof also passed; a later legacy harness comparison initially treated fresh
 migration timestamps as old retained data, then was corrected. No source data,
 live seller dataset or existing schema was downgraded or overwritten.
+
+## Task 8.3: final local regression and unavailable prepared host
+
+Final checks pass: TypeScript; 19 existing benchmark units; 7 trading units;
+3 scheduler PostgreSQL tests; 36 trading database tests; 11 dashboard/browser
+tests; 12 operational TAP tests (including nested parents); and the separate
+current/legacy restore proof. Raw final dashboard/operations outputs are private
+`final-dashboard-tests.txt` and `final-operations-tests.txt` under the usability
+evidence parent. A dashboard test initially searched only the first bounded
+review page; it now asserts the exact newly submitted evidence event/review.
+The corrected full dashboard rerun and subsequent operations suite pass.
+
+The current fixture browser recovery suite is **blocked**: SSH/name-service
+checks for Jarlaxle fail (`Could not resolve hostname jarlaxle`). The retry did
+not resolve it. Fresh Minecraft/process ownership, runtime/sandbox and host
+admission therefore could not be established. No browser was launched there,
+networking changed or unrelated service stopped. The earlier milestone's 16-case
+pass remains historical evidence, not a current regression result. No approval
+was needed/requested because no service stop was attempted. The selected remote
+clean-test database's later cleanup cannot be verified while its host is
+unreachable; retained data/evidence must not be removed by broad cleanup.
