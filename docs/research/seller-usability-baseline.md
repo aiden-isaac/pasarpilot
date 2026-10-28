@@ -457,3 +457,39 @@ non-commit labels; preparation now identifies such labels as dirty. Historical
 evidence is preserved rather than rewritten. Task 7.6 remains unchecked because
 1,000 orders per seller were not safely reached. Do not describe partial growth
 as a successful resource/capacity gate or relax host controls to force a pass.
+
+## Task 7.7: full transaction window, failed settled resource gate
+
+Ran the unchanged 60-minute clean schedule from committed source
+`c1c512f93726e4b8b1bf4a15ac3da3866a5835a4` on fresh Jarlaxle dataset
+`operations-clean-01`, archive SHA256
+`05c44e23da897237e085e2d4f24a11a0c73d6a95c9e04c6600b50515b1e29a59`.
+All 240 planned/attempted scenarios passed, 120 completed orders per seller,
+240 stock commitments, zero stock violations, no pending inbox or held
+reservations, and the scheduled queue drained through the existing worker.
+No browser, scheduler or model environment was required.
+
+The overall run **failed**, after drain and 89 samples into the first settled
+window: host swap-out increased by one 4,096-byte page. Admission stopped and
+evidence/state were retained. Neither five-minute window completed, so their
+RSS comparison is unavailable. Task 7.7 remains unchecked; 240 successful sales
+must not be described as passing the complete operational acceptance gate.
+No threshold, host setting or unrelated workload was changed to obtain a pass.
+
+Actual retained results: 4,616 samples with zero declared sampling gaps;
+maximum concurrent application RSS plus database cgroup memory 467,111,936
+bytes, runner maximum 111,448,064 bytes, minimum host available 5,884,911,616
+bytes. No query/request errors or database OOM were observed. Client p95 reads
+8ms, mutations including redirect 37ms and synthetic visibility 77ms. Measured
+clean-phase mean CPU use was 0.004753 application cores and 0.011810 database
+cores (one core = 100%); diagnostics/runner are separate. Database growth was
+7,151,616 bytes and retained evidence 17,869,076 logical bytes at inspection.
+The first partial settled RSS mean was 343,625,728 bytes; there is no second mean.
+
+Private `evidence/clean-01/post-abort.json` retains state/CPU/storage checks.
+Read-only ancestor cgroup inspection found no additional memory.high/max limit;
+the cause of the host-wide swap increment is not attributed to the application.
+Ten dashboard/browser tests separately pass after the timeline change; reviewed
+desktop light and 360px dark screenshots in `final-query-review/` show legible
+transaction facts, visible focus and responsive reflow. None of this substitutes
+for the two incomplete resource acceptance tasks.
