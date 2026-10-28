@@ -519,3 +519,29 @@ compiled runtime archive
 `a4e75a558cd5aef90e6ea53a60a988c687c951f2eabe8ca9ac2d4e2730f8f2ea`.
 Task 7.6 is now complete for bounded functional growth; prior failed homelab
 attempts remain retained and 7.7's target-host acceptance remains incomplete.
+
+## Task 8.1: boundary/UI review; native screen-reader check blocked
+
+Expanded HTTP acceptance across all 22 seller POST form routes: missing
+authentication, forged CSRF and foreign origin reject before any audit mutation.
+Colliding owned inventory/listing/item/conversation/order/review IDs, read-only
+critical reviews, foreign list/child/timeline cursors, colliding demo run IDs,
+stale profiles, unsaved secret recovery and revoked sessions remain isolated.
+Global diagnostics contain no injected private marker or token. The four focused
+security/update/confirmation tests and all eleven dashboard/browser tests pass.
+
+Fixed filtered inventory's empty message to distinguish no matches from no
+inventory. The existing rendered appearance test verifies the recovery wording.
+Tool-assisted keyboard review exercised skip-to-content, native search submission,
+navigation to settings, visible input focus and the payment checkbox without
+submitting payment. Chromium's accessibility tree exposes the labelled display
+name textbox. Reviewed new desktop empty-state and 360px dark payment screenshots
+under private `test-20261028/manual-acceptance/`; existing acceptance also covers
+light/dark, reduced motion, 320px reflow, enlarged text/zoom equivalent and no-JS.
+Native browser-toolbar zoom remains an emulation limitation already recorded.
+
+No Orca, Speech Dispatcher, eSpeak NG or Xvfb executable is installed; native
+computer-use surfaces are unavailable. No native screen-reader listening pass
+was performed, and an accessibility-tree check is not claimed as a substitute.
+Task 8.1 remains unchecked for that explicit missing verification. No system
+packages or unrelated desktop services were installed or changed to bypass it.

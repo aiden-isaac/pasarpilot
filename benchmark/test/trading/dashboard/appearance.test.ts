@@ -44,7 +44,7 @@ test('seller views reflow with visible keyboard focus, large targets, accessible
    for(const [role,ratio]of Object.entries(ratios))assert.ok(ratio>=(role==='control'?3:4.5),`${colorScheme} ${role}: ${ratio}`);
    console.log(JSON.stringify({appearance:colorScheme,contrast:ratios}));
   }
-  await page.setViewportSize({width:1280,height:800});await page.goto(`${base}/?view=inventory&q=definitely-no-synthetic-match`);assert.match(await page.locator('main').innerText(),/No inventory yet/);
+  await page.setViewportSize({width:1280,height:800});await page.goto(`${base}/?view=inventory&q=definitely-no-synthetic-match`);assert.match(await page.locator('main').innerText(),/No matching inventory. Change or clear your search/);
   // Double the text size while retaining the 320 CSS px reflow check above.
   await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});await page.setViewportSize({width:320,height:800});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   if(output)await page.screenshot({path:join(output,'text-200-percent.png')});
