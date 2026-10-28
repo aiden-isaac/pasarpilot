@@ -493,3 +493,29 @@ Ten dashboard/browser tests separately pass after the timeline change; reviewed
 desktop light and 360px dark screenshots in `final-query-review/` show legible
 transaction facts, visible focus and responsive reflow. None of this substitutes
 for the two incomplete resource acceptance tasks.
+
+### Later 7.6 functional growth completion on Kano
+
+After local headroom became available, `operations-growth-kano-01` passed all
+2,000 planned HTTP sales, reaching exactly 1,000 completed orders per seller.
+Both 250/1,000 checkpoints pass full paged traversal, 235 related mappings per
+seller/checkpoint, long threads, late-page edits/association and retained actual
+query plans. Page p95 was 2ms at 250 and 3ms at 1,000; repeated HTTP timeline p95
+at 1,000 was 11ms/8ms for the two sellers. Overall client read p95 12ms, mutations
+including redirect 36ms, synthetic visibility 102ms. No new index was necessary.
+
+This is **Kano functional growth evidence**, not Jarlaxle capacity acceptance.
+The database retained 768MiB/no-swap/one-CPU limits and the same service/host
+guards. There were 252 samples, zero declared gaps, maximum concurrent app RSS
+plus database memory 648,200,192 bytes, runner maximum 127,823,872 bytes, minimum
+host available 9,735,168,000 bytes and database growth 49,277,788 bytes. A separate
+local dashboard regression overlapped the end of this run; do not describe it
+as an isolated host benchmark. The finite runner itself has no browser dependency.
+
+Source parent `43ba7228fa58bcddeba50b162a3def11a0685385` is explicitly dirty:
+the contemporaneous copy fix/security tests are retained in private runtime patch
+SHA256 `bccfd6add9efecb53b41261d8f2bf7e9ccf11e69fefde4ceffae75e88b18b4d9`,
+compiled runtime archive
+`a4e75a558cd5aef90e6ea53a60a988c687c951f2eabe8ca9ac2d4e2730f8f2ea`.
+Task 7.6 is now complete for bounded functional growth; prior failed homelab
+attempts remain retained and 7.7's target-host acceptance remains incomplete.

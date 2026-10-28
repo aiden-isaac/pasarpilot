@@ -44,7 +44,7 @@
 - [x] 7.3 Add controlled disconnect/reconnect and startup-readiness cases, including idle pool errors, in-flight rollback, app restart and lost commit acknowledgements; fix only observed existing pool/transaction/worker recovery gaps and assert safe resumption within 30 seconds of readiness.
 - [x] 7.4 Exercise unavailable optional capture, one failing seller stream and stopped scheduler/Chromium/AI; ensure expiry and healthy sellers continue through narrowly scoped worker fixes and retain invalid/missing source evidence rather than fabricate events.
 - [x] 7.5 Extend existing real-database tests for held-stock edits, same-unit races, expiry/cancellation/promotion, payment races, duplicate/conflicting events and session revocation; keep test-only deadline manipulation in the disposable dataset and prove no duplicate business/audit effects after restart.
-- [ ] 7.6 Generate bounded 250/1,000-order-per-seller growth stages with >200 related records and a long thread; measure query plans/returned rows/latency/storage, add only justified indexes or batch adjustments and verify the declared p95 targets and complete paged browsing.
+- [x] 7.6 Generate bounded 250/1,000-order-per-seller growth stages with >200 related records and a long thread; measure query plans/returned rows/latency/storage, add only justified indexes or batch adjustments and verify the declared p95 targets and complete paged browsing.
 - [ ] 7.7 Run the predeclared 60-minute/240-sale clean soak separately from fault/growth stages; retain every planned attempt, resource samples, backlog settlement and both five-minute settled windows; mark any missed correctness/resource/latency gate failed or inconclusive with evidence.
 
 ## 8. Close acceptance and publish the operator handoff
