@@ -402,3 +402,15 @@ original, restored after the test, and never deleted or marked processed while
 invalid. Logs contain fixed codes without source/payment bodies. The complete
 recovery suite still passes. All fault work used the separate owned disposable
 database; no host scheduler, Chromium or unrelated service was stopped.
+
+## Task 7.5: stock and session invariants across restart
+
+Extended the catalog test with a real allocated hold: reducing stock below the
+hold fails without a version or audit change. Added an owned database/application
+regression for simultaneous last-unit claims, simultaneous exact verification,
+payment versus already-expired hold, cancellation/promotion, stable duplicate
+and conflicting events, and revoked/expired sessions across application restart.
+Terminal replays retain identical payment/stock state, delivery count and audit
+count. Revoked/expired requests return 401 for both update reads and writes.
+The new restart assertion and nine focused existing database assertions pass;
+TypeScript passes. All manipulated deadlines remain in disposable test data.
