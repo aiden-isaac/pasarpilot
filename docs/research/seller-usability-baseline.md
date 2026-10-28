@@ -358,3 +358,29 @@ task-23 runtime archive SHA256
 `2e28f1c357fcc9c51592cb3f13a0c5c3a6e7d58e7a23c2194870dac51e3229a2`.
 No unrelated services changed. Future expiry wakeups remain visible in evidence;
 smoke does not assert settled queue or sustained capacity.
+
+## Task 7.3: controlled disconnect and acknowledgement recovery
+
+Reproduced an application exit after terminating its idle database backend and
+loss of the original `57P01` error when rollback also failed. Shared pools now
+handle idle errors with a fixed diagnostic; transactions retain the original
+error and discard broken connections. Serve startup fails with a safe same-data
+retry instruction. No automatic transaction retry or reseeding was added.
+
+Seven browser-free recovery assertions pass on the explicitly owned disposable
+`operations-local-v2-20261028` database, including real backend termination,
+uncommitted rollback, real container restart, held/paid/pending state retention,
+expired-hold reconciliation, discarded successful COMMIT acknowledgement and
+discarded HTTP response followed by stable replay. PostgreSQL startup `57P03`
+uses a deterministic local wire-protocol error fixture; the separate restart
+case uses actual PostgreSQL. Measured idle reconnect 26ms, post-restart app ready
+and reconciled 149ms, running-app expiry recovery 4,388ms after readiness, all
+within 30 seconds. Existing 36 trading database tests also pass.
+
+The pinned image resets the socket directory to 3775 during restart. The owned
+test restores 0700 after checking canonical path and owner; the application
+continues to reject unsafe dataset permissions. The enclosing dataset stays
+0700 throughout. Operator restart instructions must include this check (8.2).
+Private fault evidence is `evidence/recovery-1793171810036`; failed harness
+attempts and pre-fix logs are retained. These bounded fault tests are separate
+from the clean soak.
