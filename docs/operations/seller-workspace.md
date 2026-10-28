@@ -10,7 +10,7 @@ sales do not establish Jarlaxle resource readiness.
 
 From this workspace, the selected demonstration database is
 `/home/aiden/.local/share/pasarpilot-usability/demo-20261028`; its owner-only
-`credentials.json` contains the two invited logins. Do not publish that file.
+`credentials.json` contains passwords in `seller-a`, then `seller-b` order. Do not publish that file.
 Start the existing data with the commands below; never run setup again on it.
 Browse **http://127.0.0.1:8787/login** on the same machine. The application binds
 only to `127.0.0.1`; this guide does not configure remote/public access.
@@ -26,6 +26,11 @@ node dist/src/trading/cli.js serve
 If the owned database was stopped, use the verified restart procedure below
 before migrating/serving. Leave this terminal running. Ctrl-C in this terminal
 stops this application gracefully; it does not stop PostgreSQL or other services.
+
+The implementation handoff may already have this app running with its PID in
+`demo-20261028/serve.pid`. Before signalling a recorded PID, verify its owner,
+`/proc/PID/cmdline` is this project's trading CLI `serve`, and its `PGHOST` is
+the selected dataset. Never use a broad `pkill` or stop an unknown port owner.
 
 ## First installation into a new private dataset
 

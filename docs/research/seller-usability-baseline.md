@@ -590,3 +590,23 @@ pass remains historical evidence, not a current regression result. No approval
 was needed/requested because no service stop was attempted. The selected remote
 clean-test database's later cleanup cannot be verified while its host is
 unreachable; retained data/evidence must not be removed by broad cleanup.
+
+## Task 8.4: final acceptance and handoff
+
+Corrected obsolete root/runbook claims and published the sanitised acceptance
+report with all four capability traces, commit ledger, exact measurements and
+separate passed/failed/blocked evidence. Strict OpenSpec validation, TypeScript,
+diff checks and 33 local documentation links pass. The actual retained demo
+accepts its invitation and all seven workspace pages render on loopback; reviewed
+its desktop/mobile screenshots under `demo-20261028/final-review/`. Final visual
+review found the persistent guidance link incorrectly numbered as a seventh
+checklist step; moving it outside the list preserves six derived facts. Four
+focused onboarding/desktop/mobile/no-JS follow-up cases pass after that copy/layout
+fix. Only the verified owned demo process was restarted; test databases were
+stopped with their data retained. No public listener or production deployment.
+
+Final progress is 30/32: 7.7 remains failed/incomplete after the host swap-out
+abort; 8.1 remains incomplete for native assistive-technology verification.
+The prepared-host fixture rerun is explicitly blocked within completed 8.3.
+Meta authorization stays unresolved. Nothing was pushed, rebased, squashed or
+archived; existing untracked planning artifacts and `.codex/` are preserved.

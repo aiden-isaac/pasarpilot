@@ -90,7 +90,7 @@ export const view:View=async(w,csrf,url,feedback)=>{
  };
  const checklist=async()=>{
   const steps=await onboarding(w);
-  return `<section id="onboarding"><h3>First-use checklist</h3><p>${steps.filter(s=>s.done).length} of ${steps.length} setup steps complete. Resume in any safe order.</p><ol>${steps.map(s=>`<li>${s.done?'Complete':'To do'} · <a href="${e(s.href)}">${e(s.label)}</a></li>`).join('')}<li><a href="/?view=settings#guidance">Read negotiation and intervention guidance</a> · Always available</li></ol><p>Setup never delivers replies or verifies money. Missing prerequisites remain guarded.</p></section>`;
+  return `<section id="onboarding"><h3>First-use checklist</h3><p>${steps.filter(s=>s.done).length} of ${steps.length} setup steps complete. Resume in any safe order.</p><ol>${steps.map(s=>`<li>${s.done?'Complete':'To do'} · <a href="${e(s.href)}">${e(s.label)}</a></li>`).join('')}</ol><p><a href="/?view=settings#guidance">Read negotiation and intervention guidance</a> · Always available</p><p>Setup never delivers replies or verifies money. Missing prerequisites remain guarded.</p></section>`;
  };
  let content='';
  if(section==='overview'){
