@@ -384,3 +384,21 @@ continues to reject unsafe dataset permissions. The enclosing dataset stays
 Private fault evidence is `evidence/recovery-1793171810036`; failed harness
 attempts and pre-fix logs are retained. These bounded fault tests are separate
 from the clean soak.
+
+## Task 7.4: independent local work during dependency failures
+
+The pre-fix test reproduced missing capture blocking startup reconciliation and
+invalid capture preventing a healthy seller's expiry for more than 30 seconds.
+The worker now isolates optional import, seller expiry and seller stream errors
+with fixed private diagnostic codes. It preserves the five-second cadence,
+100-event/100-expiry bounds and existing queue maintenance. No source events are
+fabricated, ignored or acknowledged as successfully imported on failure.
+
+All 11 operations assertions pass: explicitly missing capture, invalid retained
+capture, a test-only malformed pending source, healthy seller expiry and full
+HTTP sale, then capture unset with no scheduler/model environment or application
+child processes. The injected envelope is retained privately alongside its
+original, restored after the test, and never deleted or marked processed while
+invalid. Logs contain fixed codes without source/payment bodies. The complete
+recovery suite still passes. All fault work used the separate owned disposable
+database; no host scheduler, Chromium or unrelated service was stopped.
