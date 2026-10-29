@@ -494,6 +494,53 @@ desktop light and 360px dark screenshots in `final-query-review/` show legible
 transaction facts, visible focus and responsive reflow. None of this substitutes
 for the two incomplete resource acceptance tasks.
 
+### Follow-up clean attempts on Jarlaxle, 2026-10-28/29
+
+From the merged source `3cbe1d06914676fe8aea7dbd17051774d0130183`, a fresh
+checkout on Jarlaxle passed TypeScript, 19 benchmark units and seven trading
+units. Rootless Podman, cgroup v2, dataset ownership, labels and the pinned Node
+22.23.4 were verified. The old clean-run database had no active client and was
+stopped with data retained. A 20-second idle check had zero swap-out growth.
+
+The unchanged runner prepared `operations-clean-rerun-01` and recorded 100
+attempted/passed sales, zero failed attempts and 140 not attempted out of 240
+planned. It stopped during the clean phase on `host-swap-out-growth`. The
+evidence has 1,557 resource samples, zero sampling gaps and a maximum
+concurrent app RSS plus database cgroup memory of 308,211,712 bytes. No settled
+window began. The last sampled app and database memory stayed nearly flat while
+host anonymous memory rose. The host journal shows a separate
+`study-studio-build.service` invocation overlapping the abort; this timing does
+not prove which process swapped pages.
+
+After the fixture recovery work below, all owned fixture/database containers
+were stopped and another 20-second idle swap check showed zero growth. A new
+`operations-clean-rerun-02` dataset recorded 186 attempted/passed sales, zero
+failed attempts and 54 not attempted out of 240 planned. It stopped during the
+clean phase on the same host swap-out gate. Its 2,838 resource samples had zero
+gaps; maximum concurrent app RSS plus database cgroup memory was 392,134,656
+bytes. The last samples again showed stable app/database memory and a rise in
+host anonymous memory. A separate Codex process began around the abort. Its
+temporal overlap does not establish the source of the swapped pages. The
+database was stopped after verifying no active clients; both datasets and all
+raw evidence remain private. No threshold, host setting or unrelated service
+was changed. Task 7.7 remains unchecked because no follow-up attempt completed
+the 60-minute workload and both five-minute settled windows.
+
+### Current prepared-host fixture recovery on Jarlaxle, 2026-10-29
+
+Minecraft's Java server was absent. The existing `runtime-check.sh` confirmed
+rootless Podman and cgroup v2; the pinned Playwright 1.64.1 image was rebuilt
+from the clean checkout. The internal-network fixture and a fresh, owned,
+768MiB/no-swap/one-CPU PostgreSQL dataset at `fixture-recovery-20261029-01`
+were prepared. A 61-sample host baseline recorded a 3,695,745,843-byte pool
+budget. The unchanged `npm run test:fixture` suite passed all 16 recovery cases
+in about 71 seconds, including surviving-browser cleanup, database outage,
+uncertain action and fixture reset. Evidence is retained under
+`fixture-recovery-20261029-01/faults-1793233993378/`. Only the verified owned
+fixture and database containers were stopped afterwards; no other host service
+was changed. This closes the previously blocked subcheck under task 8.3, while
+tasks 7.7 and 8.1 remain open.
+
 ### Later 7.6 functional growth completion on Kano
 
 After local headroom became available, `operations-growth-kano-01` passed all
@@ -570,7 +617,7 @@ proof also passed; a later legacy harness comparison initially treated fresh
 migration timestamps as old retained data, then was corrected. No source data,
 live seller dataset or existing schema was downgraded or overwritten.
 
-## Task 8.3: final local regression and unavailable prepared host
+## Task 8.3: original final regression and unavailable prepared host
 
 Final checks pass: TypeScript; 19 existing benchmark units; 7 trading units;
 3 scheduler PostgreSQL tests; 36 trading database tests; 11 dashboard/browser
@@ -581,7 +628,7 @@ evidence parent. A dashboard test initially searched only the first bounded
 review page; it now asserts the exact newly submitted evidence event/review.
 The corrected full dashboard rerun and subsequent operations suite pass.
 
-The current fixture browser recovery suite is **blocked**: SSH/name-service
+At the original handoff, the fixture browser recovery suite was **blocked**: SSH/name-service
 checks for Jarlaxle fail (`Could not resolve hostname jarlaxle`). The retry did
 not resolve it. Fresh Minecraft/process ownership, runtime/sandbox and host
 admission therefore could not be established. No browser was launched there,
@@ -605,8 +652,8 @@ focused onboarding/desktop/mobile/no-JS follow-up cases pass after that copy/lay
 fix. Only the verified owned demo process was restarted; test databases were
 stopped with their data retained. No public listener or production deployment.
 
-Final progress is 30/32: 7.7 remains failed/incomplete after the host swap-out
-abort; 8.1 remains incomplete for native assistive-technology verification.
-The prepared-host fixture rerun is explicitly blocked within completed 8.3.
-Meta authorization stays unresolved. Nothing was pushed, rebased, squashed or
-archived; existing untracked planning artifacts and `.codex/` are preserved.
+Final progress is 30/32: 7.7 remains failed/incomplete after three host swap-out
+aborts; 8.1 remains incomplete for native assistive-technology verification.
+The prepared-host fixture rerun passed all 16 cases within completed 8.3.
+Meta authorization stays unresolved. No follow-up push, rebase, squash or archive
+occurred; project `.codex/` remains machine-local.

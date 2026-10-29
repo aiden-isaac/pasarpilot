@@ -302,9 +302,10 @@ The change remains unarchived with 30/32 tasks complete. The UI, onboarding,
 guarded transaction flow and bounded data/activity paths are implemented.
 Functional growth reaches 1,000 orders per seller on Kano. Jarlaxle completed
 all 240 clean sales, but its strict host swap-out gate failed during settlement;
-the two five-minute windows are incomplete. Native screen-reader verification
-is unavailable. The current prepared-host fixture recovery run is blocked by
-Jarlaxle name resolution; the historical 16-case pass is not a new result.
+the two five-minute windows are incomplete. Two later clean attempts stopped
+on the same host swap-out gate during the workload. Native screen-reader
+verification is unavailable. The current prepared-host fixture recovery suite
+passed all 16 cases on a fresh owned Jarlaxle dataset.
 
 Trading checks are separate from the browser lifecycle fixture gate:
 

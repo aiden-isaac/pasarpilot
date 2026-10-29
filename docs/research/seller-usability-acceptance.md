@@ -1,30 +1,32 @@
 # Seller usability and operations acceptance
 
-Change: `seller-usability-and-operations`; branch:
-`feat/seller-usability-and-operations`. **30/32 tasks complete.** The change is
-unarchived, with no remote push or production deployment. Pre-existing untracked
-proposal/design/spec artifacts and `.codex/` are preserved; task checkboxes were
-updated as requested. Implementation details and chronological
-evidence are in [the baseline ledger](seller-usability-baseline.md).
+Change: `seller-usability-and-operations`; the implementation was merged to
+`main` at `3cbe1d0`. Follow-up evidence is on local branch
+`feat/seller-usability-acceptance-followup`. **30/32 tasks complete.** The change
+is unarchived, with no follow-up push or production deployment. Implementation
+details and evidence are in [the baseline ledger](seller-usability-baseline.md).
 
 ## Outcome and remaining gates
 
 The seller workspace, onboarding, guarded transaction actions, bounded pages and
 activity updates, repeatable RM10 guide, recovery fixes and operator handoff are
-implemented. All final local automated suites pass. Functional growth reaches
+implemented. The prior final local automated suites passed, and the current
+prepared-host fixture suite passed. Functional growth reaches
 1,000 orders per seller on Kano. The homelab is **not operationally accepted**:
 
 - **7.7 incomplete/failed:** all 240 scheduled sales passed on Jarlaxle over the
   full 60-minute transaction window, and backlog drained, but host swap-out grew
   by one 4,096-byte page during the first settled window. Both required five-minute
-  windows are incomplete; their RSS-mean comparison is unavailable.
+  windows are incomplete; their RSS-mean comparison is unavailable. Two further
+  owned clean attempts stopped on the unchanged host swap-out gate after 100 and
+  186 successful sales respectively. Neither reached settlement.
 - **8.1 incomplete:** route/security, visual, semantic and tool-assisted keyboard
   checks pass; a native screen reader is unavailable. Native browser-toolbar
   zoom was not exercised; 200% text/zoom-equivalent and 320px reflow were tested.
-- **Current fixture regression blocked:** Jarlaxle's hostname stopped resolving
-  during final regression preparation. Fresh ownership/Minecraft/runtime/sandbox/
-  admission gates could not be verified. The prior milestone's 16-case result
-  remains historical. Task 8.3 records this permitted blocked host gate.
+- **Current fixture regression passed:** after Jarlaxle became reachable, the
+  prepared-host suite passed all 16 cases on a new owned dataset under the
+  unchanged rootless Podman, cgroup, sandbox and admission gates. Minecraft's
+  server process was absent; no service stop was needed.
 
 No guard was weakened, cache evicted, service tuned, unrelated workload stopped
 or missing evidence replaced by an estimate.
@@ -112,9 +114,9 @@ inspecting Facebook or unrelated tabs.
 | Dashboard/browser acceptance | 11/11 passed |
 | Browser-free recovery/dependency/invariant TAP tests | 12/12 passed, including nested parent tests |
 | Streamed current/legacy restore proof | Passed; separate v3, v1/v2 restore/upgrade cases |
-| Current prepared-host fixture recovery | Blocked: Jarlaxle name resolution |
+| Current prepared-host fixture recovery | Passed: 16/16 cases on Jarlaxle, 2026-10-29 |
 | Native screen reader | Unavailable, not performed |
-| Strict OpenSpec / diff checks | Passed before this report's completion commit |
+| Strict OpenSpec / diff checks | Earlier pass retained; OpenSpec 1.15.0 now fails strict validation on 14 requirement-length warnings; Git diff check passes |
 
 The final dashboard rerun corrected a test that assumed a newly created review
 would be on the first bounded page; it now checks the exact source event/review.
@@ -153,6 +155,18 @@ RSS 343,625,728 bytes), then stopped on swap-out growth. There is no second mean
 Evidence was 17,869,076 logical bytes at post-run inspection. Host-wide swap
 growth is not attributed to the application: no extra ancestor cgroup memory
 cap was found, and its cause was not established.
+
+On fresh owned Jarlaxle datasets at source `3cbe1d0`, clean rerun 01 recorded
+100 attempted/passed sales and 140 not attempted; rerun 02 recorded 186
+attempted/passed and 54 not attempted. Both stopped on host swap-out growth,
+retained all 240 planned outcomes and had no completed settled window. Their
+maximum concurrent app RSS plus database cgroup memory was 308,211,712 and
+392,134,656 bytes respectively, with zero sampling gaps. The first abort
+overlapped a separate `study-studio-build.service` invocation; the second
+overlapped the start of another Codex process. Application and database memory
+were nearly flat in the final samples of each run while host anonymous memory
+rose. This temporal evidence does not establish the source of the swapped pages.
+No threshold was changed and no unrelated process was stopped.
 
 Initial Jarlaxle growth found a 2,712.909ms correlated timeline scan; an
 uncorrelated seller-scoped reference query measured 3.527ms for the same 14 rows.
@@ -198,7 +212,10 @@ access, both invitations work and verified stock stays committed after startup.
 
 Protected evidence is under `/home/aiden/.local/share/pasarpilot-usability/`:
 
-- Jarlaxle: `operations-task23`, `operations-growth-01/02/03`, `operations-clean-01`.
+- Jarlaxle: `operations-task23`, `operations-growth-01/02/03`, `operations-clean-01`,
+  `operations-clean-rerun-01/evidence/clean-01`,
+  `operations-clean-rerun-02/evidence/clean-01`, and
+  `fixture-recovery-20261029-01/faults-1793233993378` (16-case recovery proof).
 - Kano: `operations-growth-kano-01`, `operations-local-v2-20261028/evidence/`,
   `restore-proof-01/02/03`, `test-20261028`, final dashboard/operations text outputs.
 - Committed clean runtime: `c1c512f93726e4b8b1bf4a15ac3da3866a5835a4`, archive
@@ -209,9 +226,9 @@ Protected evidence is under `/home/aiden/.local/share/pasarpilot-usability/`:
 
 Early explicitly uncommitted remote copies incorrectly recorded `sourceDirty=false`;
 that preparation metadata bug is fixed and original evidence remains unchanged.
-Completed owned local test containers were stopped with data retained. The
-demonstration is separate. Remote test cleanup cannot be verified after Jarlaxle
-became unreachable. No broad container/volume prune or host service restart occurred.
+Completed owned Jarlaxle follow-up test containers were stopped with data retained.
+The demonstration is separate. No broad container/volume prune or host service
+restart occurred.
 
 ## Capability trace
 
@@ -220,7 +237,7 @@ became unreachable. No broad container/volume prune or host service restart occu
 | seller-trading-workspace | `paging`, `workspace`, `history`, `navigation`, `assets`, `dashboard`, `updates`; paging/children/selection/safety/appearance/freshness/state tests; 250/1,000 functional checkpoints | Native reader/toolbar zoom verification incomplete; homelab resource acceptance failed |
 | seller-onboarding | v3 migration, `profile`, `onboarding`, Settings/help; migration/profile/checklist and desktop/mobile/no-JS workflow tests | Invitations remain operator-managed by design |
 | seller-demonstration | common locked synthetic intake, stable demo IDs, guided UI; two completed runs at each declared workflow viewport | Synthetic only; no external posting or payment connection |
-| trading-operational-readiness | finite measured runner, pool/tx/worker fixes, real recovery/invariant tests, current/legacy streamed restore, operator guide | Failed no-swap settled gate; current prepared-host fixture run blocked |
+| trading-operational-readiness | finite measured runner, pool/tx/worker fixes, real recovery/invariant tests, current/legacy streamed restore, operator guide; current 16-case prepared-host fixture pass | Failed no-swap settled gate |
 
 ## Known limits and next milestone
 
@@ -231,8 +248,8 @@ banking API was added. ISO date entry for meeting/extension fields remains
 operator-oriented; a native picker and a native assistive-technology review are
 useful follow-up usability work.
 
-Next OpenSpec work should close the remaining resource/assistive-technology gates
-and prepared-host regression, then define an invited-seller private pilot with
+Next OpenSpec work should close the remaining resource/assistive-technology gates,
+then define an invited-seller private pilot with
 an explicit secure-access/backup/retention model. Keep Meta authorization separate
 from implementation permission; do not start live integrations to bypass it.
 

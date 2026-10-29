@@ -1,8 +1,8 @@
 # Resume seller usability acceptance
 
 Continue approved OpenSpec change `seller-usability-and-operations`.
-The implementation is on branch `feat/seller-usability-and-operations`, at
-`e5018b9` before this handoff document. There are 33 implementation commits.
+The implementation was merged to `main` at `3cbe1d0`; this follow-up evidence
+is on local branch `feat/seller-usability-acceptance-followup`.
 Do not restart implementation: 30 of 32 tasks are complete.
 
 ## Read first
@@ -30,7 +30,20 @@ schedule (120 per seller). There were 240 stock commitments, zero stock
 violations, and the inbox/holds/queue drained. During the first settled window,
 host swap-out increased by one 4,096-byte page. The runner stopped as required.
 Only 89 seconds of that window were collected; neither required five-minute
-window completed. Do not report a successful full soak.
+window completed. Two fresh follow-up attempts on Jarlaxle stopped on the same
+host swap-out gate during the clean workload: rerun 01 passed 100 sales and
+recorded 140 not attempted, while rerun 02 passed 186 and recorded 54 not
+attempted. Both retained all 240 planned outcomes; neither began settlement.
+Do not report a successful full soak.
+
+The first follow-up abort overlapped a separate `study-studio-build.service`
+invocation. The second overlapped the start of another Codex process. App and
+database memory were nearly flat in the final samples as host anonymous memory
+rose. These observations do not prove which process swapped pages. The other
+Codex process was still active after rerun 02, so do not start another run until
+host activity is reviewed and a genuinely quiet window is available. The two
+new owned databases were stopped after verifying no active clients; data and
+evidence were retained.
 
 Inspect existing resource samples and current host activity before another run;
 the cause of the host-wide swap increment was not established. Verify hostname,
@@ -61,15 +74,14 @@ If changing UI, load the installed apple-design guidance first and inspect actua
 renders. The prior environment used `apple-design-mcp` HIG references; there was
 no standalone apple-design `SKILL.md`. Verify destination tool availability.
 
-### Blocked subcheck recorded under completed 8.3
+### Completed follow-up subcheck under 8.3
 
-The final prepared-host fixture recovery suite was not rerun: Jarlaxle name
-resolution failed before preparation. The historical 16-case pass is not a
-current result. Once reachable, follow `benchmark/README.md` unchanged: establish
-Minecraft/process ownership, obtain approval only if a service stop is genuinely
-required, verify rootless Podman/cgroup/sandbox and fresh admission, then run the
-existing fixture suite on a new owned idle dataset. Never substitute an unprepared
-host or disable sandbox/admission to obtain a pass.
+After Jarlaxle became reachable, the unchanged prepared-host fixture recovery
+suite passed all 16 cases on `fixture-recovery-20261029-01`. Minecraft's Java
+server was absent, so no service stop was needed. Rootless Podman/cgroup v2,
+the pinned browser image and a 61-sample host baseline were verified before the
+suite. The owned fixture and database containers were stopped afterward with
+evidence retained. Do not weaken sandbox/admission for future runs.
 
 ## Evidence and environment
 
@@ -79,6 +91,10 @@ Protected evidence parent on each machine:
 - Jarlaxle: `operations-clean-01/evidence/clean-01/` has `summary.json`,
   `events.jsonl` and `post-abort.json`; prior growth attempts are
   `operations-growth-01`, `-02`, `-03`; initial smoke is `operations-task23`.
+- Jarlaxle: `operations-clean-rerun-01/evidence/clean-01/` and
+  `operations-clean-rerun-02/evidence/clean-01/` retain both failed follow-up
+  runs; `fixture-recovery-20261029-01/faults-1793233993378/` retains the
+  current 16-case fixture proof.
 - Kano: `operations-growth-kano-01` passed 2,000 sales and both 250/1,000-order
   checkpoints. This is functional growth evidence, not Jarlaxle capacity proof;
   a separate browser regression overlapped its end.
@@ -93,9 +109,9 @@ Verify these paths and current state; do not assume they remain available.
 Source/runtime copies under `runtime-task*` are historical test copies, not the
 canonical new checkout. Do not overwrite them or reuse their source accidentally.
 
-Completed local test databases were stopped with data retained. Last remote
-cleanup could not be verified after loss of connectivity. Check before starting
-additional containers. The separate Kano demo was left on `127.0.0.1:8787` using
+Completed Jarlaxle follow-up test databases and fixture were stopped with data
+retained. Check current service state before starting additional containers.
+The separate Kano demo was left on `127.0.0.1:8787` using
 `demo-20261028`; verify its PID file/process/environment before signalling it.
 Do not signal a historical PID or operate the demonstration as a fault dataset.
 
@@ -105,8 +121,10 @@ TypeScript; 19 benchmark units; 7 trading units; 3 scheduler PostgreSQL tests;
 36 trading database tests; 11 dashboard/browser tests; 12 operational TAP tests
 (including nested parents); streamed current-schema and legacy v1/v2 separate
 restore/upgrade proof. A final checklist-only presentation fix additionally
-passed four onboarding/desktop/mobile/no-JS checks. Strict OpenSpec validation and
-diff checks pass. Use relevant checks after new changes; do not discard histories
+passed four onboarding/desktop/mobile/no-JS checks. The earlier strict OpenSpec
+validation passed, but standalone OpenSpec 1.15.0 now fails strict validation on
+14 existing requirement-length warnings; Git diff checks pass. Use relevant
+checks after new changes; do not discard histories
 or widen pagination to make a test find an old fixture.
 
 ## Constraints that remain in force

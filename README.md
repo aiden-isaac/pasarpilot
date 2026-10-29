@@ -4,7 +4,7 @@ PasarPilot is a planned self-hosted trading assistant for sellers in Facebook bu
 
 **Current status:** the synthetic seller application supports inventory/WTS listings, claims/backups, conversations, seller-confirmed payment, fulfilment and retained history. It now includes guided onboarding, responsive light/dark navigation, guarded actions, bounded pagination/activity checks and a repeatable RM10 demonstration. The browser-lifecycle experiment and single-slot fixture scheduler remain separate protected boundaries.
 
-The seller-usability milestone has **30/32 tasks complete**. All 240 clean synthetic sales succeeded, but Jarlaxle's resource gate failed on host swap-out growth before both settled windows completed. A native screen-reader pass is unavailable, and the current prepared-host fixture regression is blocked by host name resolution. This is not production-readiness or live Meta authorization. See the [acceptance report](docs/research/seller-usability-acceptance.md) and [setup/demo/recovery guide](docs/operations/seller-workspace.md).
+The seller-usability milestone has **30/32 tasks complete**. The original 240 clean synthetic sales succeeded, but Jarlaxle's resource gate failed on host swap-out growth before both settled windows completed; two later clean attempts also stopped on that gate. A native screen-reader pass is unavailable. The current prepared-host fixture recovery suite passed all 16 cases. This is not production-readiness or live Meta authorization. See the [acceptance report](docs/research/seller-usability-acceptance.md) and [setup/demo/recovery guide](docs/operations/seller-workspace.md).
 
 ## Architecture direction
 
